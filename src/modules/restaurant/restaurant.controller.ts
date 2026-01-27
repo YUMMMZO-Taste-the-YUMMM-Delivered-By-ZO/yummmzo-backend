@@ -1,10 +1,11 @@
+import { catchAsync } from "@/utils/catchAsync.util";
 import { Request, Response, NextFunction } from "express";
 
 /**
     * API 4.1: List Restaurants (with Search & Filters)
     * GET /api/v1/restaurants
 */
-export const getRestaurantsController = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getRestaurantsController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     // 1. Extract Query Params: lat, long, radius, cuisine, rating, isVeg, sort, page, limit.
     // 2. Validation: Ensure lat/long are provided if radius filtering or distance sorting is requested.
     // 3. Cache Check: Generate a MD5 hash of the query object for the key `restaurants:list:{hash}`.
@@ -17,13 +18,13 @@ export const getRestaurantsController = async (req: Request, res: Response, next
     // 6. Enrichment: Attach 'distance' and 'deliveryTime' dynamically to each restaurant object.
     // 7. Redis Store: Save result in `restaurants:list:{hash}` (TTL: 5 min).
     // 8. Response: Return 200 with restaurant list and pagination metadata.
-};
+});
 
 /**
     * API 4.2: Get Restaurant Details
     * GET /api/v1/restaurants/:restaurantId
 */
-export const getRestaurantByIdController = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getRestaurantByIdController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     // 1. Extract restaurantId from params.
     // 2. Cache Lookup: Check Redis for `restaurant:details:{restaurantId}`.
     // 3. If Cache Hit: Return data.
@@ -33,13 +34,13 @@ export const getRestaurantByIdController = async (req: Request, res: Response, n
     // 5. Dynamic Logic: Calculate 'isOpen' status based on 'timings' JSON and current server time.
     // 6. Redis Store: Save in `restaurant:details:{restaurantId}` (TTL: 10 min).
     // 7. Response: Return 200 with detailed restaurant object.
-};
+});
 
 /**
     * API 4.3: Get Restaurant Menu
     * GET /api/v1/restaurants/:restaurantId/menu
 */
-export const getRestaurantMenuController = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getRestaurantMenuController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     // 1. Cache Lookup: Check Redis for `restaurant:menu:{restaurantId}`.
     // 2. If Cache Miss:
     //    - Prisma Fetch: Get Categories and their nested MenuItems for the restaurantId.
@@ -48,17 +49,17 @@ export const getRestaurantMenuController = async (req: Request, res: Response, n
     // 3. Data Transformation: Format customizations JSON for frontend consumption.
     // 4. Redis Store: Save in `restaurant:menu:{restaurantId}` (TTL: 15 min).
     // 5. Response: Return 200 with nested menu structure.
-};
+});
 
 /**
     * API 7.2: Get Restaurant Reviews
     * GET /api/v1/restaurants/:restaurantId/reviews
 */
-export const getRestaurantReviewsController = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getRestaurantReviewsController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     // 1. Cache Lookup: Check `restaurant:reviews:{restaurantId}:{page}`.
     // 2. If Cache Miss:
     //    - Prisma Fetch: Get Reviews, including User (name, avatar) and OrderItem names.
     //    - Aggregate: Calculate 'averageRating' and 'ratingDistribution' (1-5 star counts).
     // 3. Redis Store: Save in `restaurant:reviews:{restaurantId}:{page}` (TTL: 5 min).
     // 4. Response: Return 200 with review data and stats.
-};
+});

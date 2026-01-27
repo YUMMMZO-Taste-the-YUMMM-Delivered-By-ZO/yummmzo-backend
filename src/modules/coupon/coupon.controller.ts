@@ -1,10 +1,11 @@
+import { catchAsync } from "@/utils/catchAsync.util";
 import { Request, Response, NextFunction } from "express";
 
 /**
     * API: Get Available Coupons
     * GET /api/v1/coupons
 */
-export const getCouponsController = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getCouponsController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     // 1. Extract Query Params: `restaurantId` (Optional).
     // 2. DB Query (Prisma): Fetch coupons where:
     //    - `isActive` is true.
@@ -13,13 +14,13 @@ export const getCouponsController = async (req: Request, res: Response, next: Ne
     //    - `restaurantId` is NULL (global) OR matches the provided `restaurantId`.
     // 3. Logic: If the user is logged in, you may optionally filter out coupons where `currentUsagePerUser` has already been reached.
     // 4. Response: Return 200 with a list of applicable coupons, their descriptions, and T&Cs.
-};
+});
 
 /**
     * API: Validate Coupon (Standalone)
     * POST /api/v1/coupons/validate
 */
-export const validateCouponController = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const validateCouponController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     // 1. Extract: `code` and `orderValue` (and `restaurantId` if applicable) from body.
     // 2. Fetch: Find the coupon in DB by `code`.
     
@@ -36,4 +37,4 @@ export const validateCouponController = async (req: Request, res: Response, next
     //    - If 'flat': `amount = value`.
     
     // 5. Response: Return 200 with `isValid: true`, the calculated `discountAmount`, and a success message.
-};
+});

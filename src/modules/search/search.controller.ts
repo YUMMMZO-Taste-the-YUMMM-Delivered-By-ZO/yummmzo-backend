@@ -1,10 +1,11 @@
+import { catchAsync } from "@/utils/catchAsync.util";
 import { Request, Response, NextFunction } from "express";
 
 /**
     * API 4.4: Search Restaurants & Dishes
     * GET /api/v1/search
 */
-export const globalSearchController = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const globalSearchController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     // 1. Extract Query Params: `q` (search string), `type` (restaurant|dish|all), `latitude`, `longitude`.
     // 2. Validation: Ensure query string `q` is at least 2-3 characters to prevent heavy unindexed DB scans.
     // 3. Cache Check: Hash the query + type + location (rounded to 2 decimal places for better hit rate) 
@@ -29,4 +30,4 @@ export const globalSearchController = async (req: Request, res: Response, next: 
     // 8. Performance Target: Response time < 300ms.
     // 9. Redis Store: Save the final aggregated object in cache.
     // 10. Response: Return 200 with `{ restaurants: [], dishes: [] }`.
-};
+});
