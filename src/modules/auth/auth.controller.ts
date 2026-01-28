@@ -15,6 +15,7 @@ export const registerController = catchAsync(async (req: Request, res: Response,
     // 7. Redis Store: Save token `emailVerify:{token} -> userId` with 24hr TTL.
     // 8. Queue Job: Add 'VERIFICATION' email task to BullMQ (email-notifications queue).
     // 9. Response: Return 201 with userId and success message.
+    console.log("hi from register");
 });
 
 /**
