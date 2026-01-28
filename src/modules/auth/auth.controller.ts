@@ -15,7 +15,6 @@ export const registerController = catchAsync(async (req: Request, res: Response,
     // 7. Redis Store: Save token `emailVerify:{token} -> userId` with 24hr TTL.
     // 8. Queue Job: Add 'VERIFICATION' email task to BullMQ (email-notifications queue).
     // 9. Response: Return 201 with userId and success message.
-    console.log("hi from register");
 });
 
 /**
@@ -50,30 +49,7 @@ export const loginController = catchAsync(async (req: Request, res: Response, ne
 });
 
 /**
-    * API 1.4: Google OAuth (Initiate)
-    * GET /api/v1/auth/google
-*/
-export const googleAuthController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => { 
-    // 1. Trigger Passport.js Google Strategy.
-    // 2. Redirect user to Google Consent screen.
-});
-
-/**
-    * API 1.4: Google OAuth (Callback)
-    * GET /api/v1/auth/google/callback
-*/
-export const googleAuthCallbackController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => { 
-    // 1. Exchange Google code for user profile info.
-    // 2. DB Sync: Check if user exists by `googleId` or `email`.
-    // 3. If New: Create user with `isEmailVerified = true`.
-    // 4. If Existing: Link Google ID to account if not already linked.
-    // 5. Token Generation: Issue JWT access/refresh tokens (same as Login).
-    // 6. Redis Store: Save refresh token.
-    // 7. Response: Redirect to frontend with tokens.
-});
-
-/**
-    * API 1.5: Forgot Password
+    * API 1.4: Forgot Password
     * POST /api/v1/auth/forgot-password
 */
 export const forgotPasswordController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => { 
@@ -87,7 +63,7 @@ export const forgotPasswordController = catchAsync(async (req: Request, res: Res
 });
 
 /**
-    * API 1.6: Reset Password
+    * API 1.5: Reset Password
     * POST /api/v1/auth/reset-password
 */
 export const resetPasswordController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => { 
@@ -101,22 +77,7 @@ export const resetPasswordController = catchAsync(async (req: Request, res: Resp
 });
 
 /**
-    * API 1.7: Refresh Token
-    * POST /api/v1/auth/refresh-token
-*/
-export const refreshTokenController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => { 
-    // 1. Extract refreshToken from body.
-    // 2. Token Validation: Verify JWT signature and expiry.
-    // 3. Redis Check: Check if `refreshToken:{userId}:{tokenId}` exists.
-    // 4. Security (Reuse Detection): If token is valid but NOT in Redis, suspect reuse/theft. 
-    //    -> ACTION: Delete ALL refresh tokens for this userId (Security breach protocol).
-    // 5. Rotation: Generate NEW Access Token (15m) and NEW Refresh Token (7d).
-    // 6. Update Redis: Delete old token, store new one.
-    // 7. Response: Return new token pair.
-});
-
-/**
-    * API 1.8: Logout
+    * API 1.6: Logout
     * POST /api/v1/auth/logout
 */
 export const logoutController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => { 

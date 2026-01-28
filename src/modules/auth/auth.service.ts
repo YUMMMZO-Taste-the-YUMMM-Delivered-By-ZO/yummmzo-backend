@@ -1,3 +1,4 @@
+import { prisma } from '../../config/database';
 
 export const registerService = async (): Promise<void> => {
     try {
