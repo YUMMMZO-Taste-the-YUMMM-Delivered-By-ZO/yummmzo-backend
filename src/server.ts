@@ -1,4 +1,5 @@
-import app from './app';
+import app from "./app";
+import "@/queues/email.worker";
 
 const port = process.env.PORT || 3000;
 

@@ -7,8 +7,14 @@ export const emailWorker = new Worker('email-queue', async (job: Job) => {
     console.log(`🚀 Processing ${job.name} for: ${email}`);
 
     switch (job.name) {
+        case 'VERIFICATION_EMAIL':
+            await sendEmail(email, 'VERIFICATION_EMAIL', { 
+                name: name || 'User', 
+                url: `${process.env.FRONTEND_URL}/verify-email?token=${job.data.token}`
+            });
+            break;
+            
         case 'WELCOME_EMAIL':
-            // Sahi signature: (email, type, payload object)
             await sendEmail(email, 'WELCOME_EMAIL', { name });
             break;
             

@@ -12,6 +12,12 @@ export class BadRequestError extends ApiError{
     };
 };
 
+export class TooManyRequestsError extends ApiError {
+    constructor(message: string = "Too many requests, please try again later") {
+        super(message, 429);
+    };
+};
+
 export class ValidationError extends ApiError{
     constructor(errors: any[] , message: string = "Validation Failed"){
         super(message , 400 , errors);
