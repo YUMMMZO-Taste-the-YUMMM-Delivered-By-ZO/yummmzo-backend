@@ -6,11 +6,11 @@ export async function checkRateLimit(key: string , limit: number , windowInSecon
     try {
         const current = await redis.incr(key);
 
-        if(Number(current) === 1){
+        if(current === 1){
             await redis.expire(key , windowInSeconds);
         };
 
-        if(Number(current) > limit){
+        if(current > limit){
             throw new TooManyRequestsError();
         };
 

@@ -19,9 +19,18 @@ export const LoginSchema = z.object({
 
 export type LoginSchemaData = z.infer<typeof LoginSchema>;
 
+// Forgot Password Schema
+export const ForgotPasswordSchema = z.object({
+    email: z.string()
+});
+
+export type ForgotPasswordSchemaData = z.infer<typeof ForgotPasswordSchema>;
+
 // Password Reset Schema
 export const PasswordResetSchema = z.object({
-    
+    resetToken: z.string(),
+    password: z.string().min(8 , "Password should be atleast of 8 characters").max(16 , "Password cannot be more than 16 characters"),
+    confirmPassword: z.string().min(8 , "Password should be atleast of 8 characters").max(16 , "Password cannot be more than 16 characters")
 });
 
 export type PasswordResetSchemaData = z.infer<typeof PasswordResetSchema>;

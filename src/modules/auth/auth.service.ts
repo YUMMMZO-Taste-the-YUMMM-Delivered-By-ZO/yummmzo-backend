@@ -39,47 +39,56 @@ export const registerService = async (userData: any): Promise<any> => {
     };
 };
 
-export const loginService = async (): Promise<void> => {
+export const verifyEmailService = async (userId: number): Promise<any> => {
     try {
-        // logic...
+        const user = await prisma.user.update({
+            where: {
+                id: userId
+            },
+            data: {
+                isEmailVerified: true
+            }
+        });
+
+        return user;
     } 
     catch (error) {
-        console.log(error);
+        console.log(`Error While Verifying Email : ${error}`);
+        throw new Error(`Error While Verifying Email : ${error}`);
     }
 };
 
-export const logoutService = async (): Promise<void> => {
+export const getUserService = async (email: string): Promise<any> => {
     try {
-        // logic...
+        const user = await prisma.user.findFirst({
+            where: {
+                email: email
+            }
+        });
+
+        return user;
     } 
     catch (error) {
-        console.log(error);
+        console.log(`Error While Getting a User By Email : ${error}`);
+        throw new Error(`Error While Getting a User By Email : ${error}`);
     }
 };
 
-export const verifyEmailService = async (): Promise<void> => {
+export const resetPasswordService = async (userId: number , hashedPassword: string): Promise<any> => {
     try {
-        // logic...
-    } 
-    catch (error) {
-        console.log(error);
-    }
-};
+        const user = await prisma.user.update({
+            where: {
+                id: userId
+            },
+            data: {
+                password: hashedPassword
+            }
+        });
 
-export const forgotPasswordService = async (): Promise<void> => {
-    try {
-        // logic...
+        return user;
     } 
     catch (error) {
-        console.log(error);
-    }
-};
-
-export const resetPasswordService = async (): Promise<void> => {
-    try {
-        // logic...
-    } 
-    catch (error) {
-        console.log(error);
+        console.log(`Error While Updating Users Password : ${error}`);
+        throw new Error(`Error While Updating Users Password : ${error}`);
     }
 };

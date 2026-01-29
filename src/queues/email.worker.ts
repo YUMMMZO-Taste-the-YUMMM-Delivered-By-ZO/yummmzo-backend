@@ -18,6 +18,17 @@ export const emailWorker = new Worker('email-queue', async (job: Job) => {
             await sendEmail(email, 'WELCOME_EMAIL', { name });
             break;
             
+        case 'PASSWORD_RESET':
+            await sendEmail(email, 'PASSWORD_RESET', { 
+                name, 
+                resetLink: data?.resetLink 
+            });
+            break;
+            
+        case 'PASSWORD_UPDATED':
+            await sendEmail(email, 'PASSWORD_UPDATED', { name });
+            break;
+            
         case 'ORDER_CONFIRMATION':
             await sendEmail(email, 'ORDER_CONFIRMATION', { 
                 name, 
@@ -26,12 +37,6 @@ export const emailWorker = new Worker('email-queue', async (job: Job) => {
             });
             break;
             
-        case 'PASSWORD_RESET':
-            await sendEmail(email, 'PASSWORD_RESET', { 
-                name, 
-                resetLink: data?.resetLink 
-            });
-            break;
             
         default:
             console.warn(`⚠️ Unknown job name: ${job.name}`);

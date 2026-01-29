@@ -10,3 +10,13 @@ export async function hashPassword(password: string) {
         throw new Error(`Error Hashing Password : ${error}`);
     }
 };
+
+export async function comparePassword(plain: string , hashed: string) {
+    try {
+        const isMatch = await bcrypt.compare(plain , hashed);
+        return isMatch;
+    }
+    catch (error) {
+        throw new Error(`Error Comparing Password : ${error}`);
+    }
+};
