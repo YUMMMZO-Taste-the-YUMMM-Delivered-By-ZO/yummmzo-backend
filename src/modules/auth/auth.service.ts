@@ -58,7 +58,7 @@ export const verifyEmailService = async (userId: number): Promise<any> => {
     }
 };
 
-export const getUserService = async (email: string): Promise<any> => {
+export const getUserByEmailService = async (email: string): Promise<any> => {
     try {
         const user = await prisma.user.findFirst({
             where: {
@@ -71,6 +71,22 @@ export const getUserService = async (email: string): Promise<any> => {
     catch (error) {
         console.log(`Error While Getting a User By Email : ${error}`);
         throw new Error(`Error While Getting a User By Email : ${error}`);
+    }
+};
+
+export const getUserByIdService = async (userId: number): Promise<any> => {
+    try {
+        const user = await prisma.user.findFirst({
+            where: {
+                id: userId
+            }
+        });
+
+        return user;
+    } 
+    catch (error) {
+        console.log(`Error While Getting a User By userId : ${error}`);
+        throw new Error(`Error While Getting a User By userId : ${error}`);
     }
 };
 

@@ -1,67 +1,175 @@
 import { catchAsync } from "@/utils/catchAsync.util";
+import { sendSuccess } from "@/utils/response.util";
 import { Request, Response, NextFunction } from "express";
+import { changePasswordService, getProfileService, updateProfileNameService, uploadAvatarService } from "./user.service";
+import { redisConnection as redis } from "@/config/redis";
+import { NotFoundError, UnauthorizedError, ValidationError } from "@/utils/customError.util";
+import { ChangePasswordSchema, UpdateProfileAvatarSchema, UpdateProfileNameSchema } from "./user.dataValidation";
+import { getUserByIdService } from "../auth/auth.service";
+import { comparePassword, hashPassword } from "@/utils/hash.util";
+import { emailQueue } from "@/queues/email.queue";
 
 /**
     * API 2.1: Get Profile
     * GET /api/v1/users/profile
 */
-export const getProfileController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getProfileController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     // 1. Extract userId from req.user (populated by Auth Middleware).
+    const { userId } = req.params;
+    const cacheKey = `user:profile:${userId}`;
+    
     // 2. Cache Lookup: Check Redis for `user:profile:{userId}`.
+    const cachedProfile = await redis.get(cacheKey);
+
     // 3. If Cache Hit: Return JSON data immediately (Performance target: < 50ms).
+    if(cachedProfile){
+        return sendSuccess("Successfully Retrieved User Profile", JSON.parse(cachedProfile), 200);
+    };
+
     // 4. If Cache Miss: 
     //    - Query MySQL via Prisma for user details (Exclude sensitive fields like password).
+    const user = await getProfileService(Number(userId));
+    if (!user) {
+        return next(new NotFoundError("User doesn't exist"));
+    };
+    
     //    - Store result in Redis `user:profile:{userId}` with 5 min TTL.
+    await redis.set(`user:profile:${userId}` , JSON.stringify(user) , 'EX' , 300);
+
     // 5. Response: Return 200 with user data.
+    return sendSuccess("Successfully Retrieved User Profile" , user , 200);
 });
 
 /**
-    * API 2.2: Update Profile
+    * API 2.2: Update Profile Name
     * PATCH /api/v1/users/profile
 */
-export const updateProfileController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const updateProfileNameController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     // 1. Validation: Use Zod to validate optional fields (name, phone).
-    // 2. Edge Case: If no fields provided in body, return 400.
-    // 3. Uniqueness Check: If phone is being updated, check if new phone already exists in DB.
-    // 4. DB Update: Update user record in MySQL.
-    // 5. Cache Invalidation: Delete `user:profile:{userId}` from Redis.
-    // 6. Logging: Log the profile update event for audit.
-    // 7. Response: Return 200 with updated user data.
+    const validatedData = UpdateProfileNameSchema.safeParse(req.body);
+    if(!validatedData.success){
+        return next(new ValidationError(validatedData.error.issues));
+    };
+
+    // 2. Check if body is empty (At least one field required)
+    if (Object.keys(validatedData.data).length === 0) {
+        return next(new ValidationError([] , "At least one field must be provided for update."));
+    };
+
+    const { userId } = req.params;
+
+    // 3. DB Update: Update user record in MySQL.
+    const updatedUser = await updateProfileNameService(Number(userId) , validatedData.data);
+
+    // 4. Cache Invalidation: Delete `user:profile:{userId}` from Redis.
+    await redis.del(`user:profile:${userId}`);
+
+    // 5. Logging: Log the profile update event for audit.
+    console.log(`[PROFILE_NAME_UPDATE]: User ${userId} updated their profile name.`);
+
+    // 6. Response: Return 200 with updated user data.
+    return sendSuccess("Profile Name updated successfully", updatedUser, 200);
 });
 
 /**
-    * API 2.3: Change Password
-    * POST /api/v1/users/change-password
-*/
-export const changePasswordController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // 1. Validation: Check `currentPassword` and `newPassword` strength.
-    // 2. DB Fetch: Get user's current hashed password from DB.
-    // 3. Verification: Compare `currentPassword` with DB hash via bcrypt.
-    // 4. Edge Case: If it doesn't match, return 401 "Current password incorrect".
-    // 5. Edge Case: If `newPassword` is same as `currentPassword`, return 400.
-    // 6. DB Update: Hash `newPassword` (12 salt rounds) and save to DB.
-    // 7. Session Management: Invalidate all other refresh tokens in Redis EXCEPT the current session.
-    // 8. Queue Job: Add 'PASSWORD_CHANGE_NOTIFICATION' to BullMQ.
-    // 9. Response: Return 200 success.
-});
-
-/**
-    * API 2.4: Upload Avatar
+    * API 2.3: Upload Avatar
     * POST /api/v1/users/avatar
 */
-export const uploadAvatarController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // 1. Middleware: Use Multer to handle `multipart/form-data`.
-    // 2. File Validation: Check type (jpg, png, webp) and size (Max 2MB).
-    // 3. Image Processing: Resize image to 200x200 (using Sharp).
-    // 4. Storage: Upload processed image to AWS S3/Cloudinary.
-    // 5. Cleanup: If user already has an avatar URL, delete the old file from S3.
-    // 6. DB Update: Update `avatar` URL in User table.
-    // 7. Cache Invalidation: Delete `user:profile:{userId}` from Redis.
-    // 8. Response: Return 200 with the new avatar URL.
+export const uploadAvatarController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    // 1. Validation: Check if 'avatar' string is present
+    const validatedData = UpdateProfileAvatarSchema.safeParse(req.body);
+    if(!validatedData.success){
+        return next(new ValidationError(validatedData.error.issues));
+    };
+
+    const { avatar } = validatedData.data;
+    const { userId } = req.params;
+    
+    // 2. DB Update via Service
+    const user = await uploadAvatarService(Number(userId) , avatar);
+    if(!user){
+        console.log("user doesnt exist");
+    };
+
+    // 3. Cache Invalidation: Refresh the profile cache
+    await redis.del(`user:profile:${userId}`);
+
+    // 4. Response
+    return sendSuccess("Avatar updated successfully", { avatar }, 200);
 });
 
 /**
-    * API 2.5: Delete Account
+    * API 2.4: Change Password
+    * POST /api/v1/users/change-password
+*/
+export const changePasswordController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    // 1. Validation: Check `currentPassword` and `newPassword` strength.
+    const validatedData = ChangePasswordSchema.safeParse(req.body);
+    if(!validatedData.success){
+        return next(new ValidationError(validatedData.error.issues));
+    };
+    
+    const { oldPassword , newPassword , confirmPassword } = validatedData.data;
+    const { userId } = req.params;
+    
+    if(newPassword !== confirmPassword){
+        console.log("passwords doesnt match");
+    };
+
+    // 2. DB Fetch: Get user's current hashed password from DB.
+    const user = await getUserByIdService(Number(userId));
+    if(!user){
+        return next(new NotFoundError("User not found"));
+    };
+
+    const userHashedPassword = user.password;
+
+    // 3. Verification: Compare `currentPassword` with DB hash via bcrypt.
+    const isMatch = await comparePassword(oldPassword , userHashedPassword);
+    if(!isMatch){
+        return next(new UnauthorizedError("Current password is incorrect."));
+    };
+
+    // 4. Edge Case: New password shouldn't be same as old
+    if(oldPassword === newPassword){
+        return next(new ValidationError([], "New password cannot be the same as the old one."));
+    };
+
+    // 6. DB Update: Hash `newPassword` (12 salt rounds) and save to DB.
+    const hashedPassword = await hashPassword(newPassword);
+
+    await changePasswordService(Number(userId) , newPassword);
+
+    // 7. Session Management: Invalidate all other refresh tokens in Redis EXCEPT the current session.
+
+    // 8. Queue Job: Add 'PASSWORD_CHANGE_NOTIFICATION' to BullMQ.
+    await emailQueue.add('PASSWORD_CHANGE_NOTIFICATION' , {
+        name: user.firstName,
+        email: user.email
+    });
+
+    // 9. Response: Return 200 success.
+    return sendSuccess("Password changed successfully.", {}, 200);
+});
+
+/**
+    * API 2.5: Update Email
+    * POST /api/v1/users/email
+*/
+export const updateEmailController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    
+});
+
+/**
+    * API 2.6: Update Phone
+    * POST /api/v1/users/phone
+*/
+export const updatePhoneController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    
+});
+
+/**
+    * API 2.7: Delete Account
     * DELETE /api/v1/users/profile
 */
 export const deleteAccountController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {

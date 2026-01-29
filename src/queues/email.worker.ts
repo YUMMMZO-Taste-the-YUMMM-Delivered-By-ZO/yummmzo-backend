@@ -29,6 +29,10 @@ export const emailWorker = new Worker('email-queue', async (job: Job) => {
             await sendEmail(email, 'PASSWORD_UPDATED', { name });
             break;
             
+        case 'PASSWORD_CHANGE_NOTIFICATION':
+            await sendEmail(email, 'PASSWORD_CHANGE_NOTIFICATION', { name });
+            break;
+            
         case 'ORDER_CONFIRMATION':
             await sendEmail(email, 'ORDER_CONFIRMATION', { 
                 name, 

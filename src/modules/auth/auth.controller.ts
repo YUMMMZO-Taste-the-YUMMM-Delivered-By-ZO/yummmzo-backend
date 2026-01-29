@@ -6,7 +6,7 @@ import { sendSuccess } from "@/utils/response.util";
 import { redisConnection as redis } from '../../config/redis'
 import { comparePassword, hashPassword } from '@/utils/hash.util';
 import { ConflictError, ForbiddenError, UnauthorizedError, ValidationError } from '@/utils/customError.util';
-import { checkIfUserExistService, getUserService, registerService, resetPasswordService, verifyEmailService } from './auth.service';
+import { checkIfUserExistService, getUserByEmailService, registerService, resetPasswordService, verifyEmailService } from './auth.service';
 import { emailQueue } from '@/queues/email.queue';
 import { checkRateLimit } from '@/utils/rateLimit.util';
 import { generateJWT } from '@/utils/jwt.util';
@@ -107,7 +107,7 @@ export const loginController = catchAsync(async (req: Request, res: Response, ne
     // 3. Security: Check if account is locked in Redis (5 fails = 30min lock)
 
     // 4. Single DB Fetch: User and verification status
-    const user = await getUserService(email);
+    const user = await getUserByEmailService(email);
 
     // 5. Generic Error for non-existent users
     if(!user){
@@ -197,7 +197,7 @@ export const forgotPasswordController = catchAsync(async (req: Request, res: Res
     await checkRateLimit(`rateLimit:forgotPassword:email:${email}` , 3);
 
     // 3. DB Check: Find user by email.
-    const user = await getUserService(email);
+    const user = await getUserByEmailService(email);
 
     // 4. Security: Always return 200 "Link sent" even if email doesn't exist.
     if(!user) {
