@@ -3,11 +3,11 @@ import { createAddressController, deleteAddressController, getAddressByIdControl
 
 const router = Router();
 
-router.get('/' , getAddressesController);
-router.get('/:addressId' , getAddressByIdController);
-router.post('/' , createAddressController);
-router.patch('/:addressId' , updateAddressController);
-router.delete('/:addressId' , deleteAddressController);
-router.patch('/:addressId/default' , setDefaultAddressController);
+router.get('/:userId' , getAddressesController);
+router.get('/:userId/:addressId' , getAddressByIdController);
+router.post('/:userId' , createAddressController);
+router.patch('/:userId/:addressId' , updateAddressController);
+router.patch('/:userId/:addressId/default' , setDefaultAddressController);
+router.delete('/:userId/:addressId' , deleteAddressController);
 
 export default router;

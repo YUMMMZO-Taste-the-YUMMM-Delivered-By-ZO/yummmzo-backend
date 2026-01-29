@@ -144,6 +144,8 @@ model Address {
   city      String   @db.VarChar(50)
   state     String   @db.VarChar(50)
   pincode   String   @db.VarChar(10)
+  latitude  Float?   
+  longitude Float?
   name      String   @db.VarChar(100) 
   phone     String   @db.VarChar(15)  
   isDefault Boolean  @default(false)
