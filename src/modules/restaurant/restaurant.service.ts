@@ -1,16 +1,136 @@
+import { prisma } from "@/config/database";
+import { Prisma } from "@prisma/client";
 
-export const getRestaurantsService = async (): Promise<void> => {
-    // logic...
+export const getRestaurantsService = async (filters: any): Promise<any> => {
+    try {
+        const { lat, lng, search, cuisine, rating, priceRange, freeDelivery, sort, page, limit } = filters;
+        const offset = (page - 1) * limit;
+
+        // 1. Base Filters
+        const searchFilter = search ? Prisma.sql`AND r.name LIKE ${`%${search}%`}` : Prisma.empty;
+        const ratingFilter = rating ? Prisma.sql`AND r.rating >= ${rating}` : Prisma.empty;
+        const freeDeliveryFilter = Prisma.empty; 
+
+        // 2. Cuisine Join Logic (Many-to-Many) 
+        let cuisineJoin = Prisma.empty;
+        let cuisineFilter = Prisma.empty;
+
+        if (cuisine) {
+            const cuisineList = cuisine.split(',');
+            cuisineJoin = Prisma.sql`
+                INNER JOIN _CuisineToRestaurant ctr ON r.id = ctr.B
+                INNER JOIN Cuisine c ON ctr.A = c.id
+            `; 
+            cuisineFilter = Prisma.sql`AND c.name IN (${Prisma.join(cuisineList)})`;
+        };
+
+        // 3. Price Range Mapping
+        let priceFilter = Prisma.empty;
+        if (priceRange === "1"){
+            priceFilter = Prisma.sql`AND r.priceForTwo <= 300`;
+        }
+        else if (priceRange === "2"){
+            priceFilter = Prisma.sql`AND r.priceForTwo BETWEEN 301 AND 700`;
+        }
+        else if (priceRange === "3"){
+            priceFilter = Prisma.sql`AND r.priceForTwo BETWEEN 701 AND 1500`;
+        } 
+        else if (priceRange === "4"){
+            priceFilter = Prisma.sql`AND r.priceForTwo > 1500`;
+        };
+
+        // 4. Sorting Logic
+        let orderBy = Prisma.sql`ORDER BY distance ASC`;
+        if (sort === "rating"){
+            orderBy = Prisma.sql`ORDER BY r.rating DESC`;
+        }
+        else if (sort === "deliveryTime"){
+            orderBy = Prisma.sql`ORDER BY r.deliveryTime ASC`;
+        };
+
+        // 5. Main Query with Haversine
+        const restaurants = await prisma.$queryRaw`
+            SELECT DISTINCT r.*, (
+                6371 * acos(
+                    cos(radians(${lat})) * cos(radians(r.latitude)) * cos(radians(r.longitude) - radians(${lng})) + 
+                    sin(radians(${lat})) * sin(radians(r.latitude))
+                )
+            ) AS distance
+            FROM Restaurant r
+            ${cuisineJoin}
+            WHERE r.isActive = true
+            ${searchFilter}
+            ${ratingFilter}
+            ${cuisineFilter}
+            ${priceFilter}
+            ${freeDeliveryFilter}
+            HAVING distance <= 20
+            ${orderBy}
+            LIMIT ${limit} OFFSET ${offset}
+        `;
+
+        // 6. Count Query
+        const totalCountResult: any = await prisma.$queryRaw`
+            SELECT COUNT(DISTINCT r.id) as count
+            FROM Restaurant r
+            ${cuisineJoin}
+            WHERE r.isActive = true
+            ${searchFilter}
+            ${ratingFilter}
+            ${cuisineFilter}
+            ${priceFilter}
+            ${freeDeliveryFilter}
+            AND (
+                6371 * acos(
+                    cos(radians(${lat})) * cos(radians(r.latitude)) * cos(radians(r.longitude) - radians(${lng})) + 
+                    sin(radians(${lat})) * sin(radians(r.latitude))
+                )
+            ) <= 20
+        `;
+
+        const total = Number(totalCountResult[0].count);
+
+        return {
+            restaurants,
+            pagination: {
+                page,
+                limit,
+                total,
+                hasMore: total > page * limit
+            }
+        };
+    } catch (error) {
+        console.error(`Error While Getting All Restaurants : ${error}`);
+        throw new Error(`Error While Getting All Restaurants`);
+    }
 };
 
 export const getRestaurantByIdService = async (): Promise<void> => {
-    // logic...
+        try {
+        
+    }
+    catch (error) {
+        console.log(`Error While Getting All Restaurants : ${error}`);
+        throw new Error(`Error While Getting All Restaurants : ${error}`);
+    }
 };
 
 export const getRestaurantMenuService = async (): Promise<void> => {
-    // logic...
+    try {
+        
+    }
+    catch (error) {
+        console.log(`Error While Getting All Restaurants : ${error}`);
+        throw new Error(`Error While Getting All Restaurants : ${error}`);
+    }
 };
 
 export const getRestaurantReviewsService = async (): Promise<void> => {
-    // logic...
+        try {
+        
+    }
+    catch (error) {
+        console.log(`Error While Getting All Restaurants : ${error}`);
+        throw new Error(`Error While Getting All Restaurants : ${error}`);
+    }
 };

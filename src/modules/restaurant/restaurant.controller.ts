@@ -1,5 +1,11 @@
 import { catchAsync } from "@/utils/catchAsync.util";
 import { Request, Response, NextFunction } from "express";
+import { RestaurantFilterSchema } from "./restaurant.dataValidation";
+import { ValidationError } from "@/utils/customError.util";
+import { redisConnection as redis } from "@/config/redis";
+import { sendSuccess } from "@/utils/response.util";
+import crypto from 'crypto';
+import { getRestaurantsService } from "./restaurant.service";
 
 /**
     * API 4.1: List Restaurants (with Search & Filters)
@@ -13,20 +19,33 @@ import { Request, Response, NextFunction } from "express";
         *   - sort (optional): "rating" | "deliveryTime" | "distance" (default: distance)
         *   - page, limit (optional): Pagination - default page=1, limit=12
 */
-export const getRestaurantsController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // * Flow:
-    //     *   1. Validate lat/lng presence
-    //     *   2. Build cache key: `restaurants:list:${md5(queryParams)}`
-    //     *   3. If cache hit → return cached response
-    //     *   4. If cache miss:
-    //     *      a. Raw SQL with Haversine formula for distance calculation
-    //     *      b. Filter: isActive=true, distance <= 20km
-    //     *      c. Apply optional filters (cuisine, rating, isVeg)
-    //     *      d. Sort: Open restaurants first, then by sort param, closed at end
-    //     *      e. Paginate results
-    //     *   5. Enrich each restaurant: { ...restaurant, distance, isOpen }
-    //     *   6. Cache result (TTL: 5 min)
-    //     *   7. Return { restaurants, pagination: { page, limit, total, hasMore } }
+export const getRestaurantsController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    // 1. Validate lat/lng presence
+    const validatedData = RestaurantFilterSchema.safeParse(req.query); 
+    if(!validatedData.success){
+        return next(new ValidationError(validatedData.error.issues));
+    };
+
+    // 2. Build cache key: `restaurants:list:${md5(queryParams)}`
+    const queryString = JSON.stringify(validatedData.data);
+    const hash = crypto.createHash('md5').update(queryString).digest('hex');
+    const cacheKey = `restaurants:list:${hash}`;
+
+    // 3. If cache hit → return cached response
+    const cachedData = await redis.get(cacheKey);
+    if(cachedData){
+        const parsedData = JSON.parse(cachedData);
+        return sendSuccess("Restaurants fetched successfully From Cache." , parsedData , 200);
+    };
+
+    // 4. cache miss -> Call Service
+    const restaurants = await getRestaurantsService(validatedData.data);
+
+    // 6. Cache result (TTL: 5 min)
+    await redis.set(cacheKey , JSON.stringify(restaurants) , 'EX' , 300);
+
+    // 7. Return { restaurants, pagination: { page, limit, total, hasMore } }
+    return sendSuccess("Restaurants fetched successfully" , { restaurants } , 200);
 });
 
 /**
