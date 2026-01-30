@@ -52,7 +52,7 @@ export const getRestaurantMenuController = catchAsync(async (req: Request, res: 
 });
 
 /**
-    * API 7.2: Get Restaurant Reviews
+    * API 4.2: Get Restaurant Reviews
     * GET /api/v1/restaurants/:restaurantId/reviews
 */
 export const getRestaurantReviewsController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {

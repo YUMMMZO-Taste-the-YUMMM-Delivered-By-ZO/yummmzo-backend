@@ -154,6 +154,22 @@ model Address {
   orders    Order[]
 }
 
+model Coupon {
+  id               Int           @id @default(autoincrement())
+  restaurantId     Int?          
+  restaurant       Restaurant?   @relation(fields: [restaurantId], references: [id])
+  code             String        @unique @db.VarChar(50)
+  description      String        @db.VarChar(255)
+  discountType     Discount_Type
+  discountValue    Int
+  maxDiscount      Int?
+  minOrderValue    Int           @default(0)
+  validFrom        DateTime
+  validTill        DateTime
+  isActive         Boolean       @default(true)
+  orders           Order[]
+}
+
 model Order {
   id                 Int            @id @default(autoincrement())
   orderNumber        String         @unique @db.VarChar(50)
@@ -236,20 +252,4 @@ model Review {
   comment      String?    @db.VarChar(500)
   images       Json?      
   createdAt    DateTime   @default(now())
-}
-
-model Coupon {
-  id               Int           @id @default(autoincrement())
-  restaurantId     Int?          
-  restaurant       Restaurant?   @relation(fields: [restaurantId], references: [id])
-  code             String        @unique @db.VarChar(50)
-  description      String        @db.VarChar(255)
-  discountType     Discount_Type
-  discountValue    Int
-  maxDiscount      Int?
-  minOrderValue    Int           @default(0)
-  validFrom        DateTime
-  validTill        DateTime
-  isActive         Boolean       @default(true)
-  orders           Order[]
 }
