@@ -17,3 +17,11 @@ export const RestaurantFilterSchema = z.object({
 });
 
 export type RestaurantFilterSchemaData = z.infer<typeof RestaurantFilterSchema>;
+
+// Restaurant Detail Schema
+export const RestaurantDetailSchema = z.object({
+    lat: z.string().transform(Number),
+    lng: z.string().transform(Number),
+});
+
+export type RestaurantDetailSchemaData = z.infer<typeof RestaurantDetailSchema>;

@@ -1,11 +1,12 @@
 import { catchAsync } from "@/utils/catchAsync.util";
 import { Request, Response, NextFunction } from "express";
-import { RestaurantFilterSchema } from "./restaurant.dataValidation";
-import { ValidationError } from "@/utils/customError.util";
+import { RestaurantDetailSchema, RestaurantFilterSchema } from "./restaurant.dataValidation";
+import { NotFoundError, ValidationError } from "@/utils/customError.util";
 import { redisConnection as redis } from "@/config/redis";
 import { sendSuccess } from "@/utils/response.util";
 import crypto from 'crypto';
-import { getRestaurantsService } from "./restaurant.service";
+import { getRestaurantByIdService, getRestaurantMenuService, getRestaurantsService } from "./restaurant.service";
+import { calculateHaversineJS } from "@/utils/distance.util";
 
 /**
     * API 4.1: List Restaurants (with Search & Filters)
@@ -55,18 +56,61 @@ export const getRestaurantsController = catchAsync(async (req: Request, res: Res
     * Params: restaurantId
     * Query: lat, lng (optional - for distance calculation)
 */
-export const getRestaurantByIdController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    //  * Flow:
-        //  *   1. Validate restaurantId
-        //  *   2. Cache key: `restaurant:details:${restaurantId}`
-        //  *   3. If cache hit → return (still calculate isOpen dynamically)
-        //  *   4. If cache miss:
-        //  *      a. Fetch restaurant with cuisines relation
-        //  *      b. If not found OR isActive=false → 404
-        //  *   5. Calculate isOpen from openingTime/closingTime
-        //  *   6. Calculate distance if lat/lng provided
-        //  *   7. Cache result (TTL: 10 min)
-        //  *   8. Return { restaurant: { ...details, isOpen, distance, cuisines } }
+export const getRestaurantByIdController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    // 1. Validate restaurantId
+    const validatedData = RestaurantDetailSchema.safeParse(req.query);
+    if(!validatedData.success){
+        return next(new ValidationError(validatedData.error.issues));
+    };
+
+    const { lat , lng } = validatedData.data;
+
+    const { restaurantId } = req.params;
+    if(!restaurantId){
+        return next(new ValidationError([] , "Restaurant ID Doesnt Exist."));
+    };
+
+    // 2. Cache key: `restaurant:details:${restaurantId}`
+    const cacheKey = `restaurant:details:${restaurantId}`;
+
+    // 3. If cache hit → return (still calculate isOpen dynamically)
+    const cachedData = await redis.get(cacheKey);
+    let restaurant;
+    if(cachedData){
+        restaurant = JSON.parse(cachedData);
+    }
+    // 4. If cache miss -> Fetch restaurant with cuisines relation
+    else{
+        restaurant = await getRestaurantByIdService(Number(restaurantId));
+        if (!restaurant){
+            return next(new NotFoundError("Restaurant not found"));
+        };
+
+        // 5. Cache result (TTL: 10 min)
+        await redis.set(cacheKey , JSON.stringify(restaurant) , 'EX' , 600);
+    };
+
+    // 5. Calculate isOpen from openingTime/closingTime
+    const now = new Date();
+    const restaurantOpeningTime = restaurant.openingTime;
+    const restaurantClosingTime = restaurant.closingTime;
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const isOpen = (currentTime >= restaurantOpeningTime) && (currentTime <= restaurantClosingTime);
+
+    // 6. Calculate distance if lat/lng provided
+    let distance = null;
+    if(lat && lng){ 
+        distance = calculateHaversineJS(Number(lat), Number(lng), restaurant.latitude, restaurant.longitude);
+    };
+
+    const finalResult = {
+        ...restaurant,
+        isOpen,
+        distance
+    };
+
+    // 8. Return { restaurant: { ...details, isOpen, distance, cuisines } }
+    return sendSuccess("Restaurant details fetched", finalResult, 200);
 });
 
 /**
@@ -75,17 +119,35 @@ export const getRestaurantByIdController = catchAsync(async (req: Request, res: 
     
     * Params: restaurantId
 */
-export const getRestaurantMenuController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // * Flow:
-    //     *   1. Cache key: `restaurant:menu:${restaurantId}`
-    //     *   2. If cache hit → return
-    //     *   3. If cache miss:
-    //     *      a. Fetch categories where restaurantId, ordered by sortOrder
-    //     *      b. For each category, fetch menuItems where inStock=true
-    //     *      c. Sort items: bestsellers first, then by rating
-    //     *   4. Structure: [{ id, name, items: [{ id, name, price, isVeg, isBestseller, ... }] }]
-    //     *   5. Cache result (TTL: 15 min)
-    //     *   6. Return { menu: categories }
+export const getRestaurantMenuController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    const { restaurantId } = req.params;
+
+    // 1. Cache key: `restaurant:menu:${restaurantId}`
+    const cacheKey = `restaurant:menu:${restaurantId}`;
+
+    // 2. If cache hit → return
+    let menu;
+    const cachedData = await redis.get(cacheKey);
+    
+    if(cachedData){
+        menu = JSON.parse(cachedData);
+        return sendSuccess("Menu fetched from cache" , menu , 200);
+    }
+    // 3. If cache miss:
+    // a. Fetch categories where restaurantId, ordered by sortOrder
+    // b. For each category, fetch menuItems where inStock=true
+    // c. Sort items: bestsellers first, then by rating
+    // 4. Structure: [{ id, name, items: [{ id, name, price, isVeg, isBestseller, ... }] }]
+    else{
+        const categories = await getRestaurantMenuService(Number(restaurantId));
+        menu = categories;
+    };
+    
+    // 5. Cache result (TTL: 15 min)
+    await redis.set(cacheKey , JSON.stringify(menu) , 'EX' , 900);
+
+    // 6. Return { menu: categories }
+    return sendSuccess("Menu fetched successfully" , menu , 200);
 });
 
 /**
@@ -96,14 +158,13 @@ export const getRestaurantMenuController = catchAsync(async (req: Request, res: 
     * Query: page (default 1), limit (default 10)
 */
 export const getRestaurantReviewsController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // * Flow:
-    //     *   1. Cache key: `restaurant:reviews:${restaurantId}:${page}`
-    //     *   2. If cache hit → return
-    //     *   3. If cache miss:
-    //     *      a. Fetch reviews with user (firstName, avatar) relation
-    //     *      b. Order by createdAt DESC
-    //     *      c. Paginate
-    //     *      d. Aggregate: averageRating, totalReviews, ratingDistribution {1: x, 2: y, ...}
-    //     *   4. Cache result (TTL: 5 min)
-    //     *   5. Return { reviews, stats: { average, total, distribution }, pagination }
+    // 1. Cache key: `restaurant:reviews:${restaurantId}:${page}`
+    // 2. If cache hit → return
+    // 3. If cache miss:
+    // a. Fetch reviews with user (firstName, avatar) relation
+    // b. Order by createdAt DESC
+    // c. Paginate
+    // d. Aggregate: averageRating, totalReviews, ratingDistribution {1: x, 2: y, ...}
+    // 4. Cache result (TTL: 5 min)
+    // 5. Return { reviews, stats: { average, total, distribution }, pagination }
 });

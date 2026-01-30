@@ -105,23 +105,57 @@ export const getRestaurantsService = async (filters: any): Promise<any> => {
     }
 };
 
-export const getRestaurantByIdService = async (): Promise<void> => {
-        try {
-        
+export const getRestaurantByIdService = async (restaurantId: number): Promise<any> => {
+    try {
+        const restaurant = await prisma.restaurant.findUnique({
+            where: {
+                id: restaurantId,
+                isActive: true
+            },
+            include: {
+                cuisines: true
+            }
+        });
+
+        return restaurant;
     }
     catch (error) {
-        console.log(`Error While Getting All Restaurants : ${error}`);
-        throw new Error(`Error While Getting All Restaurants : ${error}`);
+        console.log(`Error While Getting a Restaurant : ${error}`);
+        throw new Error(`Error While Getting a Restaurant : ${error}`);
     }
 };
 
-export const getRestaurantMenuService = async (): Promise<void> => {
+export const getRestaurantMenuService = async (restaurantId: number): Promise<any> => {
     try {
-        
+        const data = await prisma.restaurant.findUnique({
+            where: {
+                id: restaurantId
+            },
+            include: {
+                categories: {
+                    orderBy: {
+                        sortOrder: 'asc'
+                    },
+                    include: {
+                        items: {
+                            where: {
+                                inStock: true
+                            },
+                            orderBy: {
+                                isBestseller: 'desc',
+                                rating: 'desc'
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        return data?.categories || [];
     }
     catch (error) {
-        console.log(`Error While Getting All Restaurants : ${error}`);
-        throw new Error(`Error While Getting All Restaurants : ${error}`);
+        console.log(`Error While Getting Restaurants Menu : ${error}`);
+        throw new Error(`Error While Getting Restaurants Menu : ${error}`);
     }
 };
 
