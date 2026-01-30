@@ -92,8 +92,13 @@ model Restaurant {
   rating       Float             @default(0)
   totalRatings Int               @default(0)
   location     String            @db.VarChar(400)
+  latitude     Float             
+  longitude    Float             
+  openingTime  String            @db.VarChar(5)
+  closingTime  String            @db.VarChar(5)
   priceForTwo  Int
   deliveryTime String            @db.VarChar(50)
+  isActive     Boolean           @default(true)
   status       Restaurant_Status @default(OPEN)
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
@@ -116,6 +121,7 @@ model Category {
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   name         String     @db.VarChar(100)
   description  String?    @db.VarChar(500)
+  sortOrder    Int        @default(0)
   createdAt    DateTime   @default(now())
   items        Menu_Item[]
 }
@@ -130,6 +136,8 @@ model Menu_Item {
   image       String?  @db.VarChar(500)
   isVeg       Boolean  @default(true)
   inStock     Boolean  @default(true)
+  isBestseller Boolean  @default(false)
+  rating       Float    @default(0)    
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   orderItems  Order_Item[]

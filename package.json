@@ -52,5 +52,8 @@
     "ts-node-dev": "^2.0.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3"
+  },
+  "prisma": {
+    "seed": "ts-node -r tsconfig-paths/register prisma/seed/index.ts"
   }
 }

@@ -4,62 +4,87 @@ import { Request, Response, NextFunction } from "express";
 /**
     * API 4.1: List Restaurants (with Search & Filters)
     * GET /api/v1/restaurants
+    
+    * Query Params:
+        *   - lat, lng (required): User's current location
+        *   - cuisine (optional): Comma-separated cuisine names - "Indian,Chinese"
+        *   - rating (optional): Minimum rating filter - 4
+        *   - isVeg (optional): Boolean - show only veg restaurants
+        *   - sort (optional): "rating" | "deliveryTime" | "distance" (default: distance)
+        *   - page, limit (optional): Pagination - default page=1, limit=12
 */
 export const getRestaurantsController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // 1. Extract Query Params: lat, long, radius, cuisine, rating, isVeg, sort, page, limit.
-    // 2. Validation: Ensure lat/long are provided if radius filtering or distance sorting is requested.
-    // 3. Cache Check: Generate a MD5 hash of the query object for the key `restaurants:list:{hash}`.
-    // 4. If Cache Hit: Return 200 immediately (Target: < 200ms).
-    // 5. If Cache Miss:
-    //    - Prisma Query: Filter by 'isActive: true' and 'isOpen' (based on current time).
-    //    - Spatial Filtering: Use Haversine Formula (raw SQL in Prisma) to find restaurants within 'radius' (default 5km).
-    //    - Sort Logic: Apply sorting (rating, deliveryTime, or distance).
-    //    - Pagination: Implement cursor-based or skip/take pagination.
-    // 6. Enrichment: Attach 'distance' and 'deliveryTime' dynamically to each restaurant object.
-    // 7. Redis Store: Save result in `restaurants:list:{hash}` (TTL: 5 min).
-    // 8. Response: Return 200 with restaurant list and pagination metadata.
+    // * Flow:
+    //     *   1. Validate lat/lng presence
+    //     *   2. Build cache key: `restaurants:list:${md5(queryParams)}`
+    //     *   3. If cache hit → return cached response
+    //     *   4. If cache miss:
+    //     *      a. Raw SQL with Haversine formula for distance calculation
+    //     *      b. Filter: isActive=true, distance <= 20km
+    //     *      c. Apply optional filters (cuisine, rating, isVeg)
+    //     *      d. Sort: Open restaurants first, then by sort param, closed at end
+    //     *      e. Paginate results
+    //     *   5. Enrich each restaurant: { ...restaurant, distance, isOpen }
+    //     *   6. Cache result (TTL: 5 min)
+    //     *   7. Return { restaurants, pagination: { page, limit, total, hasMore } }
 });
 
 /**
     * API 4.2: Get Restaurant Details
     * GET /api/v1/restaurants/:restaurantId
+    
+    * Params: restaurantId
+    * Query: lat, lng (optional - for distance calculation)
 */
 export const getRestaurantByIdController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // 1. Extract restaurantId from params.
-    // 2. Cache Lookup: Check Redis for `restaurant:details:{restaurantId}`.
-    // 3. If Cache Hit: Return data.
-    // 4. If Cache Miss:
-    //    - Prisma Fetch: Get restaurant details + active offers + categories (for metadata).
-    //    - Edge Case: If restaurant not found or isActive is false, return 404.
-    // 5. Dynamic Logic: Calculate 'isOpen' status based on 'timings' JSON and current server time.
-    // 6. Redis Store: Save in `restaurant:details:{restaurantId}` (TTL: 10 min).
-    // 7. Response: Return 200 with detailed restaurant object.
+    //  * Flow:
+        //  *   1. Validate restaurantId
+        //  *   2. Cache key: `restaurant:details:${restaurantId}`
+        //  *   3. If cache hit → return (still calculate isOpen dynamically)
+        //  *   4. If cache miss:
+        //  *      a. Fetch restaurant with cuisines relation
+        //  *      b. If not found OR isActive=false → 404
+        //  *   5. Calculate isOpen from openingTime/closingTime
+        //  *   6. Calculate distance if lat/lng provided
+        //  *   7. Cache result (TTL: 10 min)
+        //  *   8. Return { restaurant: { ...details, isOpen, distance, cuisines } }
 });
 
 /**
     * API 4.3: Get Restaurant Menu
     * GET /api/v1/restaurants/:restaurantId/menu
+    
+    * Params: restaurantId
 */
 export const getRestaurantMenuController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // 1. Cache Lookup: Check Redis for `restaurant:menu:{restaurantId}`.
-    // 2. If Cache Miss:
-    //    - Prisma Fetch: Get Categories and their nested MenuItems for the restaurantId.
-    //    - Filtering: Only include items where 'inStock: true'.
-    //    - Sorting: Sort categories by 'sortOrder' and items by 'rating' or 'isBestseller'.
-    // 3. Data Transformation: Format customizations JSON for frontend consumption.
-    // 4. Redis Store: Save in `restaurant:menu:{restaurantId}` (TTL: 15 min).
-    // 5. Response: Return 200 with nested menu structure.
+    // * Flow:
+    //     *   1. Cache key: `restaurant:menu:${restaurantId}`
+    //     *   2. If cache hit → return
+    //     *   3. If cache miss:
+    //     *      a. Fetch categories where restaurantId, ordered by sortOrder
+    //     *      b. For each category, fetch menuItems where inStock=true
+    //     *      c. Sort items: bestsellers first, then by rating
+    //     *   4. Structure: [{ id, name, items: [{ id, name, price, isVeg, isBestseller, ... }] }]
+    //     *   5. Cache result (TTL: 15 min)
+    //     *   6. Return { menu: categories }
 });
 
 /**
     * API 4.2: Get Restaurant Reviews
     * GET /api/v1/restaurants/:restaurantId/reviews
+    
+    * Params: restaurantId
+    * Query: page (default 1), limit (default 10)
 */
 export const getRestaurantReviewsController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // 1. Cache Lookup: Check `restaurant:reviews:{restaurantId}:{page}`.
-    // 2. If Cache Miss:
-    //    - Prisma Fetch: Get Reviews, including User (name, avatar) and OrderItem names.
-    //    - Aggregate: Calculate 'averageRating' and 'ratingDistribution' (1-5 star counts).
-    // 3. Redis Store: Save in `restaurant:reviews:{restaurantId}:{page}` (TTL: 5 min).
-    // 4. Response: Return 200 with review data and stats.
+    // * Flow:
+    //     *   1. Cache key: `restaurant:reviews:${restaurantId}:${page}`
+    //     *   2. If cache hit → return
+    //     *   3. If cache miss:
+    //     *      a. Fetch reviews with user (firstName, avatar) relation
+    //     *      b. Order by createdAt DESC
+    //     *      c. Paginate
+    //     *      d. Aggregate: averageRating, totalReviews, ratingDistribution {1: x, 2: y, ...}
+    //     *   4. Cache result (TTL: 5 min)
+    //     *   5. Return { reviews, stats: { average, total, distribution }, pagination }
 });
