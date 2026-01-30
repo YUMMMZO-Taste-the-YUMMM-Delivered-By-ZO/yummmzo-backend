@@ -1,6 +1,6 @@
 import { catchAsync } from "@/utils/catchAsync.util";
 import { Request, Response, NextFunction } from "express";
-import { RestaurantDetailSchema, RestaurantFilterSchema } from "./restaurant.dataValidation";
+import { MenuSchema, RestaurantDetailSchema, RestaurantFilterSchema } from "./restaurant.dataValidation";
 import { NotFoundError, ValidationError } from "@/utils/customError.util";
 import { redisConnection as redis } from "@/config/redis";
 import { sendSuccess } from "@/utils/response.util";
@@ -120,10 +120,21 @@ export const getRestaurantByIdController = catchAsync(async (req: Request, res: 
     * Params: restaurantId
 */
 export const getRestaurantMenuController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    const { restaurantId } = req.params;
+    // Validate Query String
+    const validatedData = MenuSchema.safeParse(req.query);
+    if(!validatedData.success){
+        return next(new ValidationError(validatedData.error.issues));
+    };
 
-    // 1. Cache key: `restaurant:menu:${restaurantId}`
-    const cacheKey = `restaurant:menu:${restaurantId}`;
+    const { restaurantId } = req.params;
+    if(!restaurantId){
+        return next(new ValidationError([], "Restaurant ID Doesnt Exist."));
+    };
+
+    // 1. Cache key: `restaurant:menu:${queryString}`
+    const queryString = JSON.stringify(validatedData.data);
+    const hash = crypto.createHash('md5').update(queryString).digest('hex');
+    const cacheKey = `restaurants:menu:${hash}`;
 
     // 2. If cache hit → return
     let menu;
@@ -139,7 +150,7 @@ export const getRestaurantMenuController = catchAsync(async (req: Request, res: 
     // c. Sort items: bestsellers first, then by rating
     // 4. Structure: [{ id, name, items: [{ id, name, price, isVeg, isBestseller, ... }] }]
     else{
-        const categories = await getRestaurantMenuService(Number(restaurantId));
+        const categories = await getRestaurantMenuService(Number(restaurantId) , validatedData.data);
         menu = categories;
     };
     

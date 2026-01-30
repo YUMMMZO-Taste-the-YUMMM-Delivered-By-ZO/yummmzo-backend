@@ -23,6 +23,35 @@ enum Restaurant_Status {
   INACTIVE
 }
 
+enum Restaurant_Sort {
+  RECOMMENDED
+  FASTEST_DELIVERY
+  RATING
+  DISTANCE
+}
+
+enum Menu_Sort {
+  RECOMMENDED
+  PRICE_LOW_TO_HIGH
+  PRICE_HIGH_TO_LOW
+  RATING
+}
+
+enum Dietary_Preference {
+  VEGETARIAN
+  VEGAN
+  GLUTEN_FREE
+  HALAL
+}
+
+enum Spice_Level {
+  NORMAL
+  MILD
+  MEDIUM
+  HOT
+  EXTRA_SPICY
+}
+
 enum Order_Status {
   PENDING
   CONFIRMED
@@ -127,19 +156,21 @@ model Category {
 }
 
 model Menu_Item {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   categoryId  Int
-  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  name        String   @db.VarChar(100)
-  description String   @db.VarChar(500)
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name        String    @db.VarChar(100)
+  description String    @db.VarChar(500)
   price       Int
-  image       String?  @db.VarChar(500)
-  isVeg       Boolean  @default(true)
-  inStock     Boolean  @default(true)
+  image       String?   @db.VarChar(500)
+  isVeg       Boolean   @default(true)
+  inStock     Boolean   @default(true)
   isBestseller Boolean  @default(false)
-  rating       Float    @default(0)    
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  rating       Float    @default(0)
+  dietaryPlan Dietary_Preference @default(VEGETARIAN)
+  spiceLevel  Spice_Level? @default(NORMAL)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   orderItems  Order_Item[]
 }
 

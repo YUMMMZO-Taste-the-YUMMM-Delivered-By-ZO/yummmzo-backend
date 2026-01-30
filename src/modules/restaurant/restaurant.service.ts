@@ -125,8 +125,35 @@ export const getRestaurantByIdService = async (restaurantId: number): Promise<an
     }
 };
 
-export const getRestaurantMenuService = async (restaurantId: number): Promise<any> => {
+export const getRestaurantMenuService = async (restaurantId: number , filters: any): Promise<any> => {
     try {
+        const { search , sort , isVeg , isBestseller , spiceLevel } = filters;
+
+        let itemOrderBy: any[] = [
+            {
+                isBestseller: 'desc'
+            },
+            {
+                rating: 'desc'
+            }
+        ];
+
+        if(sort === 'PRICE_LOW_TO_HIGH'){
+            itemOrderBy: {
+                price: 'asc'
+            }
+        };
+        if(sort === 'PRICE_HIGH_TO_LOW'){
+            itemOrderBy: {
+                price: 'desc'
+            }
+        };
+        if(sort === 'RATING'){
+            itemOrderBy: {
+                rating: 'desc'
+            }
+        };
+
         const data = await prisma.restaurant.findUnique({
             where: {
                 id: restaurantId
@@ -139,12 +166,13 @@ export const getRestaurantMenuService = async (restaurantId: number): Promise<an
                     include: {
                         items: {
                             where: {
-                                inStock: true
+                                inStock: true,
+                                isVeg: isVeg || undefined,
+                                isBestseller: isBestseller || undefined,
+                                spiceLevel: spiceLevel || undefined,
+                                name: search ? { contains: search} : undefined
                             },
-                            orderBy: {
-                                isBestseller: 'desc',
-                                rating: 'desc'
-                            }
+                            orderBy: itemOrderBy
                         }
                     }
                 }

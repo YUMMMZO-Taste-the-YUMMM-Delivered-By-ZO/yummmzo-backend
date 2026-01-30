@@ -11,7 +11,7 @@ export const RestaurantFilterSchema = z.object({
     priceRange: z.string().optional(),
     maxTime: z.string().optional().transform((val) => val ? Number(val) : undefined),
     freeDelivery: z.string().optional().transform((val) => val === 'true'),
-    sort: z.enum(["distance", "rating", "deliveryTime", "recommended"]).default("distance"),
+    sort: z.enum(["RECOMMENDED", "FASTEST_DELIVERY", "RATING", "DISTANCE"]).default("DISTANCE"),
     page: z.string().optional().default("1").transform(Number),
     limit: z.string().optional().default("12").transform(Number)
 });
@@ -25,3 +25,14 @@ export const RestaurantDetailSchema = z.object({
 });
 
 export type RestaurantDetailSchemaData = z.infer<typeof RestaurantDetailSchema>;
+
+// Menu Schema
+export const MenuSchema = z.object({
+    search: z.string().optional(),
+    sort: z.enum(["RECOMMENDED", "PRICE_LOW_TO_HIGH", "PRICE_HIGH_TO_LOW", "RATING"]).default('RECOMMENDED').optional(),
+    isVeg: z.string().optional().transform((val) => val === 'true'),
+    isBestseller: z.string().optional().transform((val) => val === 'true'),
+    spiceLevel: z.enum(["NORMAL", "MILD", "MEDIUM", "HOT", "EXTRA_SPICY"]).default('NORMAL').optional(),
+});
+
+export type MenuSchemaData = z.infer<typeof MenuSchema>;
