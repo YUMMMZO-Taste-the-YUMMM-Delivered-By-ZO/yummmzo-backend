@@ -4,6 +4,7 @@ import { categoryTemplates } from "./data/categories";
 import { menuItemsByCategory } from "./data/menuItems";
 import { patnaRestaurants } from "./data/restaurants/patna";
 import { delhiRestaurants } from "./data/restaurants/delhi";
+import { globalCoupons, restaurantCouponTemplates, CouponTemplate } from "./data/coupons";
 
 const prisma = new PrismaClient();
 
@@ -43,6 +44,40 @@ const getRandomTimings = (): { opening: string; closing: string } => {
         opening: openings[Math.floor(Math.random() * openings.length)]!,
         closing: closings[Math.floor(Math.random() * closings.length)]!
     };
+};
+
+// Helper: Get coupon code with restaurant ID
+const getRandomCouponCode = (template: CouponTemplate, restaurantId?: number): string => {
+    if (restaurantId) {
+        return `${template.code}_R${restaurantId}`;
+    }
+    return template.code;
+};
+
+// Helper: Get random spice level based on item and category
+const getRandomSpiceLevel = (itemName: string, categoryName: string): "NORMAL" | "MILD" | "MEDIUM" | "HOT" | "EXTRA_SPICY" => {
+    // Mild items - desserts, beverages, ice cream
+    const mildCategories = ["Desserts", "Beverages", "Ice Cream"];
+    if (mildCategories.includes(categoryName)) {
+        return "MILD";
+    }
+
+    // Spicy items by name keywords
+    const hotKeywords = ["spicy", "schezwan", "65", "hot", "chilli", "pepper", "tandoori", "masala"];
+    const extraSpicyKeywords = ["extra spicy", "fiery", "inferno"];
+
+    const lowerName = itemName.toLowerCase();
+
+    if (extraSpicyKeywords.some(k => lowerName.includes(k))) {
+        return "EXTRA_SPICY";
+    }
+    if (hotKeywords.some(k => lowerName.includes(k))) {
+        return "HOT";
+    }
+
+    // Random for others
+    const levels: ("NORMAL" | "MILD" | "MEDIUM" | "HOT")[] = ["NORMAL", "NORMAL", "MEDIUM", "MEDIUM", "HOT"];
+    return levels[Math.floor(Math.random() * levels.length)]!;
 };
 
 // Placeholder restaurant images
@@ -132,7 +167,8 @@ async function seedRestaurant(
                     isVeg: item.isVeg,
                     inStock: Math.random() > 0.1,
                     isBestseller: Math.random() > 0.7,
-                    rating: getRandomRating()
+                    rating: getRandomRating(),
+                    spiceLevel: item.spiceLevel || getRandomSpiceLevel(item.name, categoryTemplate.name)
                 }
             });
         }
@@ -164,6 +200,67 @@ async function seedRestaurantsForCity(
     console.log(`✅ Seeded ${count} restaurants in ${cityName}`);
 }
 
+async function seedCoupons(restaurantIds: number[]) {
+    console.log("\n🎟️  Seeding coupons...");
+
+    // 1. Seed global coupons (no restaurantId)
+    for (const coupon of globalCoupons) {
+        const validFrom = new Date();
+        const validTill = new Date();
+        validTill.setDate(validTill.getDate() + coupon.validDays);
+
+        await prisma.coupon.create({
+            data: {
+                code: coupon.code,
+                description: coupon.description,
+                discountType: coupon.discountType,
+                discountValue: coupon.discountValue,
+                maxDiscount: coupon.maxDiscount || null,
+                minOrderValue: coupon.minOrderValue,
+                validFrom,
+                validTill,
+                isActive: true,
+                restaurantId: null
+            }
+        });
+    }
+    console.log(`   ✅ Seeded ${globalCoupons.length} global coupons`);
+
+    // 2. Seed restaurant-specific coupons (30% of restaurants get 1-2 coupons)
+    const restaurantsWithCoupons = getRandomElements(restaurantIds, Math.floor(restaurantIds.length * 0.3));
+    let restaurantCouponCount = 0;
+
+    for (const restaurantId of restaurantsWithCoupons) {
+        const couponCount = getRandomNumber(1, 2);
+        const selectedTemplates = getRandomElements(restaurantCouponTemplates, couponCount);
+
+        for (const template of selectedTemplates) {
+            const validFrom = new Date();
+            const validTill = new Date();
+            validTill.setDate(validTill.getDate() + template.validDays);
+
+            await prisma.coupon.create({
+                data: {
+                    code: getRandomCouponCode(template, restaurantId),
+                    description: template.description,
+                    discountType: template.discountType,
+                    discountValue: template.discountValue,
+                    maxDiscount: template.maxDiscount || null,
+                    minOrderValue: template.minOrderValue,
+                    validFrom,
+                    validTill,
+                    isActive: true,
+                    restaurantId
+                }
+            });
+            restaurantCouponCount++;
+        }
+    }
+
+    console.log(`   ✅ Seeded ${restaurantCouponCount} restaurant-specific coupons`);
+    console.log(`✅ Total coupons: ${globalCoupons.length + restaurantCouponCount}`);
+}
+
 async function main() {
     console.log("\n🌱 Starting database seeding...\n");
 
@@ -171,6 +268,7 @@ async function main() {
     console.log("🗑️  Clearing existing data...");
     await prisma.menu_Item.deleteMany();
     await prisma.category.deleteMany();
+    await prisma.coupon.deleteMany();
     await prisma.restaurant.deleteMany();
     await prisma.cuisine.deleteMany();
     console.log("✅ Cleared existing data\n");
@@ -183,6 +281,11 @@ async function main() {
 
     await seedRestaurantsForCity("Patna", patnaRestaurants, cuisineRecords);
     await seedRestaurantsForCity("Delhi", delhiRestaurants, cuisineRecords);
+
+    // Get all restaurant IDs and seed coupons
+    const allRestaurants = await prisma.restaurant.findMany({ select: { id: true } });
+    const restaurantIds = allRestaurants.map(r => r.id);
+    await seedCoupons(restaurantIds);
 
     console.log("\n🎉 Seeding completed successfully!\n");
 }

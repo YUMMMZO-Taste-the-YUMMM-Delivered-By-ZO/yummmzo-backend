@@ -4,6 +4,7 @@ export interface MenuItemTemplate {
     price: number;
     isVeg: boolean;
     image?: string;
+    spiceLevel?: "NORMAL" | "MILD" | "MEDIUM" | "HOT" | "EXTRA_SPICY";
 }
 
 export const menuItemsByCategory: Record<string, MenuItemTemplate[]> = {
