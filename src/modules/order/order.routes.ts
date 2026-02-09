@@ -3,10 +3,10 @@ import { cancelOrderController, createOrderController, getOrderByIdController, g
 
 const router = Router();
 
-router.get('/' , getOrdersController);
-router.post('/' , createOrderController);
-router.get('/:orderId' , getOrderByIdController);
-router.post('/:orderId/cancel' , cancelOrderController);
-router.post('/:orderId/reorder' , reorderController);
+router.post('/:userId' , createOrderController);
+router.get('/:userId' , getOrdersController);
+router.get('/:userId/:orderId' , getOrderByIdController);
+router.post('/:userId/:orderId/cancel' , cancelOrderController);
+router.post('/:userId/:orderId/reorder' , reorderController);
 
 export default router;
