@@ -78,13 +78,13 @@ export const verifyEmailController = catchAsync(async (req: Request, res: Respon
     };
 
     // 4. Update DB: Set `isEmailVerified = true` for the user.
-    await verifyEmailService(Number(userId));
+    const user = await verifyEmailService(Number(userId));
 
     // 5. Cleanup: Delete the verification token from Redis.
     await redis.del(`emailVerify:${token}`);
 
     // 6. Response: Return 200 and redirect or notify success.
-    return sendSuccess("Email verified successfully. You can now login.", {}, 200);
+    return sendSuccess("Email verified successfully. You can now login.", user, 200);
 });
 
 /**
@@ -173,7 +173,12 @@ export const logoutController = catchAsync(async (req: Request, res: Response, n
     };
 
     // 4. Clear the Cookie from browser
-    res.clearCookie('jwt_token');
+    res.clearCookie('jwt_token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/'
+    });
 
     // 5. Response: Return 200 "Logged out successfully".
     return sendSuccess("Logged out successfully", {}, 200);

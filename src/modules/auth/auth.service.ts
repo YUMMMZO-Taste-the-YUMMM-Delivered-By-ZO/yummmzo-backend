@@ -47,6 +47,15 @@ export const verifyEmailService = async (userId: number): Promise<any> => {
             },
             data: {
                 isEmailVerified: true
+            },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                role: true,
+                avatar: true
             }
         });
 

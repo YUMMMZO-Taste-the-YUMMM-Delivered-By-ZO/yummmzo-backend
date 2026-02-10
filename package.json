@@ -5,9 +5,11 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/server.ts",
+    "dev": "ts-node-dev --respawn -r tsconfig-paths/register src/server.ts",
+    "worker:email": "ts-node-dev --respawn -r tsconfig-paths/register src/workers/email.worker.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/dist-server.js",
+    "worker:email:prod": "node dist/dist-worker.js"
   },
   "author": "Sahil Ladhania",
   "license": "ISC",
@@ -20,12 +22,13 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dayjs": "^1.11.19",
-    "dotenv": "^17.2.3",
+    "dotenv": "^17.2.4",
     "express": "^5.2.1",
     "helmet": "^8.1.0",
     "http-status-codes": "^2.3.0",
     "ioredis": "^5.9.2",
     "jsonwebtoken": "^9.0.3",
+    "module-alias": "^2.3.4",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "nanoid": "^5.1.6",
@@ -55,5 +58,14 @@
   },
   "prisma": {
     "seed": "ts-node -r tsconfig-paths/register prisma/seed/index.ts"
+  },
+  "_moduleAliases": {
+    "@": "dist",
+    "@config": "dist/config",
+    "@modules": "dist/modules",
+    "@middlewares": "dist/middlewares",
+    "@utils": "dist/utils",
+    "@types": "dist/types",
+    "@queues": "dist/queues"
   }
 }

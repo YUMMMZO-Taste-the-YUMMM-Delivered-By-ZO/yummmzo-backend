@@ -12,15 +12,15 @@ import aiRoutes from '../modules/ai/ai.routes';
 
 const router = Router();
 
-router.use('/auth' , authRoutes);
+router.use('/auth', authRoutes);
 router.use('/user', userRoutes);
-router.use('/address' , addressRoutes);
-router.use('/restaurant' , restaurantRoutes);
+router.use('/address', addressRoutes);
+router.use('/restaurant', restaurantRoutes);
 router.use('/cart', cartRoutes);
-router.use('/order' , orderRoutes);
-router.use('/payment' , paymentRoutes);
-router.use('/review' , reviewRoutes);
-router.use('/coupon' , couponRoutes);
-router.use('/ai' , aiRoutes);
+// router.use('/order' , orderRoutes);
+router.use('/payment', paymentRoutes);
+router.use('/review', reviewRoutes);
+router.use('/coupon', couponRoutes);
+router.use('/ai', aiRoutes);
 
 export default router;

@@ -1,5 +1,10 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import app from "./app";
+
 import "@/queues/email.worker";
+console.log("📨 Email worker started");
 
 const port = process.env.PORT || 3000;
 
