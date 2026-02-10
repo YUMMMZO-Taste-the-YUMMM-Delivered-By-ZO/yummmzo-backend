@@ -1,3 +1,7 @@
 node_modules/
 .env
 /src/generated/prisma
+node_modules 2/
+package-lock 2.json
+src/dist-*.ts
+src/queues/dist-*.ts
