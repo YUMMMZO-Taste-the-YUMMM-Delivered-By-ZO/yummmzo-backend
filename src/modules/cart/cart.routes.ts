@@ -1,13 +1,14 @@
 import { Router } from "express";
 import { addCartItemController, applyCouponController, clearCartController, getCartController, removeCouponController, updateCartItemController } from "./cart.controller";
+import { authorize } from "@/middlewares/auth.middleware";
 
 const router = Router();
 
-router.get('/:userId' , getCartController);
-router.post('/:userId/items' , addCartItemController);
-router.patch('/:userId/items/:cartItemId' , updateCartItemController);
-router.delete('/:userId' , clearCartController);
-router.post('/coupon' , applyCouponController);
-router.delete('/coupon' , removeCouponController);
+router.get('/' , authorize('CUSTOMER') , getCartController);
+router.post('/items' , authorize('CUSTOMER') , addCartItemController);
+router.patch('/items/:cartItemId' , authorize('CUSTOMER') , updateCartItemController);
+router.delete('/' , authorize('CUSTOMER'),  clearCartController);
+router.post('/coupon' , authorize('CUSTOMER') , applyCouponController);
+router.delete('/coupon' , authorize('CUSTOMER') , removeCouponController);
 
 export default router;

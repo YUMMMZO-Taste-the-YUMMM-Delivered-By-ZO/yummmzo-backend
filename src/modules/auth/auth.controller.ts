@@ -133,6 +133,7 @@ export const loginController = catchAsync(async (req: Request, res: Response, ne
 
     // 10. JWT Generation: Sign Access Token (15min)
     const payload = {
+        userId: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,

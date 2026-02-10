@@ -22,6 +22,11 @@
       "@queues/*": ["queues/*"]
     },
 
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/types" 
+    ],
+
     /* Strict Type Checking */
     "strict": true,
     "noImplicitAny": true,

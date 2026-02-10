@@ -15,7 +15,12 @@ import { emailQueue } from "@/queues/email.queue";
 */
 export const getProfileController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     // 1. Extract userId from req.user (populated by Auth Middleware).
-    const { userId } = req.params;
+    const authUser = (req as any).user;
+    if (!authUser) {
+        return next(new UnauthorizedError("User session not found"));
+    };
+
+    const userId = authUser.id;
     const cacheKey = `user:profile:${userId}`;
     
     // 2. Cache Lookup: Check Redis for `user:profile:{userId}`.
@@ -56,7 +61,12 @@ export const updateProfileNameController = catchAsync(async (req: Request, res: 
         return next(new ValidationError([] , "At least one field must be provided for update."));
     };
 
-    const { userId } = req.params;
+    const authUser = (req as any).user;
+    if (!authUser) {
+        return next(new UnauthorizedError("User session not found"));
+    };
+
+    const userId = authUser.id;
 
     // 3. DB Update: Update user record in MySQL.
     const updatedUser = await updateProfileNameService(Number(userId) , validatedData.data);
@@ -82,8 +92,13 @@ export const uploadAvatarController = catchAsync(async (req: Request, res: Respo
         return next(new ValidationError(validatedData.error.issues));
     };
 
+    const authUser = (req as any).user;
+    if (!authUser) {
+        return next(new UnauthorizedError("User session not found"));
+    };
+
+    const userId = authUser.id;
     const { avatar } = validatedData.data;
-    const { userId } = req.params;
     
     // 2. DB Update via Service
     const user = await uploadAvatarService(Number(userId) , avatar);
@@ -108,9 +123,14 @@ export const changePasswordController = catchAsync(async (req: Request, res: Res
     if(!validatedData.success){
         return next(new ValidationError(validatedData.error.issues));
     };
-    
+
+    const authUser = (req as any).user;
+    if (!authUser) {
+        return next(new UnauthorizedError("User session not found"));
+    };
+
+    const userId = authUser.id;
     const { oldPassword , newPassword , confirmPassword } = validatedData.data;
-    const { userId } = req.params;
     
     if(newPassword !== confirmPassword){
         console.log("passwords doesnt match");

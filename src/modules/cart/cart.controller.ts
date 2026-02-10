@@ -1,6 +1,6 @@
 import { redisConnection as redis } from "@/config/redis";
 import { catchAsync } from "@/utils/catchAsync.util";
-import { ConflictError, NotFoundError, ValidationError } from "@/utils/customError.util";
+import { ConflictError, NotFoundError, UnauthorizedError, ValidationError } from "@/utils/customError.util";
 import { sendSuccess } from "@/utils/response.util";
 import { Request, Response, NextFunction } from "express";
 import { checkIfMenuItemExistService, getCartService } from "./cart.service";
@@ -12,9 +12,14 @@ import { AddItemToCartSchema, UpdateCartItemSchema } from "./cart.dataValidation
 */
 export const getCartController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     // 1. Fetch cart from Redis using key `cart:{userId}`.
-    const { userId } = req.params;
-    if(!userId){
-        return next(new ValidationError([] , "User ID Doesnt Exist."));
+    const authUser = (req as any).user;
+    if (!authUser) {
+        return next(new UnauthorizedError("User session not found"));
+    };
+    
+    const userId = authUser.id;
+    if (!userId){
+        return next(new ValidationError([] , "User ID is required"));
     };
 
     const cacheKey = `cart:${userId}`;
@@ -60,7 +65,16 @@ export const addCartItemController = catchAsync(async (req: Request, res: Respon
         return next(new ValidationError(validatedData.error.issues));
     };
 
-    const {userId} = req.params;
+    const authUser = (req as any).user;
+    if (!authUser) {
+        return next(new UnauthorizedError("User session not found"));
+    };
+
+    const userId = authUser.id;
+    if (!userId){
+        return next(new ValidationError([] , "User ID is required"));
+    };
+
     const { restaurantId , menuItemId , quantity } = validatedData.data;
 
     // 2. State Check: Retrieve existing cart from Redis `cart:{userId}`.
@@ -114,7 +128,17 @@ export const updateCartItemController = catchAsync(async (req: Request, res: Res
         return next(new ValidationError(validatedData.error.issues));
     };
 
-    const { userId , cartItemId } = req.params;
+    const authUser = (req as any).user;
+    if (!authUser) {
+        return next(new UnauthorizedError("User session not found"));
+    };
+
+    const userId = authUser.id;
+    if (!userId){
+        return next(new ValidationError([] , "User ID is required"));
+    };
+
+    const { cartItemId } = req.params;
     const { quantity } = validatedData.data;
 
     // 2. Fetch and Parse
@@ -172,9 +196,14 @@ export const updateCartItemController = catchAsync(async (req: Request, res: Res
 */
 export const clearCartController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     // 1. Delete the `cart:{userId}` key from Redis.
-    const {userId} = req.params;
-    if(!userId){
-        return next(new ValidationError([] , "UserID Doesnt Exist."));
+    const authUser = (req as any).user;
+    if (!authUser) {
+        return next(new UnauthorizedError("User session not found"));
+    };
+
+    const userId = authUser.id;
+    if (!userId){
+        return next(new ValidationError([] , "User ID is required"));
     };
 
     const cacheKey = `cart:${userId}`;

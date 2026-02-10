@@ -1,13 +1,14 @@
 import { Router } from "express";
 import { createAddressController, deleteAddressController, getAddressByIdController, getAddressesController, setDefaultAddressController, updateAddressController } from "./address.controller";
+import { authorize } from "@/middlewares/auth.middleware";
 
 const router = Router();
 
-router.get('/:userId' , getAddressesController);
-router.get('/:userId/:addressId' , getAddressByIdController);
-router.post('/:userId' , createAddressController);
-router.patch('/:userId/:addressId' , updateAddressController);
-router.patch('/:userId/:addressId/default' , setDefaultAddressController);
-router.delete('/:userId/:addressId' , deleteAddressController);
+router.get('/' , authorize('CUSTOMER') , getAddressesController);
+router.get('/:addressId' , authorize('CUSTOMER') , getAddressByIdController);
+router.post('/' , authorize('CUSTOMER') , createAddressController);
+router.patch('/:addressId' , authorize('CUSTOMER') , updateAddressController);
+router.patch('/:addressId/default' , authorize('CUSTOMER'),  setDefaultAddressController);
+router.delete('/:addressId' , authorize('CUSTOMER'),  deleteAddressController);
 
 export default router;

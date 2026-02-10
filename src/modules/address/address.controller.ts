@@ -13,7 +13,12 @@ import { checkIfAddressBelongsToUserService } from "./address.ownershipValidatio
 */
 export const getAddressesController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     // 1. Extract userId from req.user.
-    const { userId } = req.params;
+    const authUser = (req as any).user;
+    if (!authUser) {
+        return next(new UnauthorizedError("User session not found"));
+    };
+
+    const userId = authUser.id;
     if (!userId){
         return next(new ValidationError([] , "User ID is required"));
     };
@@ -43,7 +48,17 @@ export const getAddressesController = catchAsync(async (req: Request, res: Respo
 */
 export const getAddressByIdController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     // 1. Extract addressId from params and userId from req.user.
-    const { userId , addressId } = req.params;
+    const authUser = (req as any).user;
+    if (!authUser) {
+        return next(new UnauthorizedError("User session not found"));
+    };
+
+    const userId = authUser.id;
+    if (!userId){
+        return next(new ValidationError([] , "User ID is required"));
+    };
+
+    const { addressId } = req.params;
     
     // 2. DB Fetch: Find unique address where id = addressId AND userId = userId.
     const address = await getAddressByIdService(Number(userId) , Number(addressId));
@@ -68,7 +83,16 @@ export const createAddressController = catchAsync(async (req: Request, res: Resp
         return next(new ValidationError(validatedData.error.issues));
     };
 
-    const { userId } = req.params;
+    const authUser = (req as any).user;
+    if (!authUser) {
+        return next(new UnauthorizedError("User session not found"));
+    };
+
+    const userId = authUser.id;
+    if (!userId){
+        return next(new ValidationError([] , "User ID is required"));
+    };
+
     let addressData = { ...validatedData.data };
 
     // 2. Limit Check: Query DB for count of addresses for this userId.
@@ -111,7 +135,17 @@ export const updateAddressController = catchAsync(async (req: Request, res: Resp
         return next(new ValidationError(validatedData.error.issues));
     };
 
-    const { userId , addressId } = req.params;
+    const authUser = (req as any).user;
+    if (!authUser) {
+        return next(new UnauthorizedError("User session not found"));
+    };
+
+    const userId = authUser.id;
+    if (!userId){
+        return next(new ValidationError([] , "User ID is required"));
+    };
+
+    const { addressId } = req.params;
     let addressData = { ...validatedData.data };
 
     // 2. Ownership Check: Verify addressId belongs to current userId.
@@ -141,7 +175,17 @@ export const updateAddressController = catchAsync(async (req: Request, res: Resp
 */
 export const setDefaultAddressController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     // 1. Ownership Check: Verify addressId belongs to userId.
-    const { userId , addressId } = req.params;
+    const authUser = (req as any).user;
+    if (!authUser) {
+        return next(new UnauthorizedError("User session not found"));
+    };
+
+    const userId = authUser.id;
+    if (!userId){
+        return next(new ValidationError([] , "User ID is required"));
+    };
+    
+    const { addressId } = req.params;
 
     const isOwner = await checkIfAddressBelongsToUserService(Number(userId) , Number(addressId));
     if(!isOwner){
