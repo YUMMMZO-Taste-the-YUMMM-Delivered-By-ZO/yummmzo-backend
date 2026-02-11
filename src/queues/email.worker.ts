@@ -5,10 +5,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// import "@/queues/email.worker";
-
-// console.log("📨 Email worker started");
-
 export const emailWorker = new Worker('email-queue', async (job: Job) => {
     const { email, name, data } = job.data;
     console.log(`🚀 Processing ${job.name} for: ${email}`);
