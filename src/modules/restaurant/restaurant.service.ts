@@ -105,6 +105,17 @@ export const getRestaurantsService = async (filters: any): Promise<any> => {
     }
 };
 
+export const getCuisinesService = async (): Promise<any> => {
+    try {
+        const cuisines = await prisma.cuisine.findMany();
+        return cuisines;
+    } 
+    catch (error) {
+        console.error(`Error While Getting All Cuisines : ${error}`);
+        throw new Error(`Error While Getting All Cuisines`);
+    };
+};
+
 export const getTopPicksService = async (filters: any): Promise<any> => {
     try {
         const { lat, lng } = filters;

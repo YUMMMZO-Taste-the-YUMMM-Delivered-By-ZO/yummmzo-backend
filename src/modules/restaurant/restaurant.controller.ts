@@ -5,7 +5,7 @@ import { NotFoundError, ValidationError } from "@/utils/customError.util";
 import { redisConnection as redis } from "@/config/redis";
 import { sendSuccess } from "@/utils/response.util";
 import crypto from 'crypto';
-import { getRestaurantByIdService, getRestaurantMenuService, getRestaurantsService, getTopPicksService } from "./restaurant.service";
+import { getCuisinesService, getRestaurantByIdService, getRestaurantMenuService, getRestaurantsService, getTopPicksService } from "./restaurant.service";
 import { calculateHaversineJS } from "@/utils/distance.util";
 
 /**
@@ -50,14 +50,38 @@ export const getRestaurantsController = catchAsync(async (req: Request, res: Res
 });
 
 /**
-    * API 4.2: List Top Picks
+    * API 4.2: Get All Cuisines
+    * GET /api/v1/cuisines
+*/
+export const getCuisinesController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    // 1. Build cache key: `cuisines:list${req.ip}`
+    const cacheKey = `topPicks:list:${req.ip}`;
+
+    // 3. If cache hit → return cached response
+    const cachedData = await redis.get(cacheKey);
+    if(cachedData){
+        const parsedData = JSON.parse(cachedData);
+        return sendSuccess("Cuisines fetched successfully From Cache." , parsedData , 200);
+    };
+
+    // 4. cache miss -> Call Service
+    const cuisines = await getCuisinesService();
+
+    // 5. Cache result (TTL: 5 min)
+    await redis.set(cacheKey , JSON.stringify(cuisines) , 'EX' , 300);
+
+    // 6. Return topPicks
+    return sendSuccess("Cuisines fetched successfully" , { cuisines } , 200);
+});
+
+/**
+    * API 4.3: List Top Picks
     * GET /api/v1/top-picks
     
     * Query Params:
         *   - lat, lng (required): User's current location
 */
-export const getTopPicksController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    console.log("Top Picks Hit")
+export const getTopPicksController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {    
     // 1. Validate lat/lng presence
     const validatedData = TopPicksSchema.safeParse(req.query); 
     if(!validatedData.success){
@@ -87,7 +111,7 @@ export const getTopPicksController = catchAsync(async (req: Request, res: Respon
 });
 
 /**
-    * API 4.3: Get Restaurant Details
+    * API 4.4: Get Restaurant Details
     * GET /api/v1/restaurants/:restaurantId
     
     * Params: restaurantId
@@ -151,7 +175,7 @@ export const getRestaurantByIdController = catchAsync(async (req: Request, res: 
 });
 
 /**
-    * API 4.4: Get Restaurant Menu
+    * API 4.5: Get Restaurant Menu
     * GET /api/v1/restaurants/:restaurantId/menu
     
     * Params: restaurantId
@@ -199,7 +223,7 @@ export const getRestaurantMenuController = catchAsync(async (req: Request, res: 
 });
 
 /**
-    * API 4.5: Get Restaurant Reviews
+    * API 4.6: Get Restaurant Reviews
     * GET /api/v1/restaurants/:restaurantId/reviews
     
     * Params: restaurantId
