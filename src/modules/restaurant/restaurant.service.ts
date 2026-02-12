@@ -105,9 +105,35 @@ export const getRestaurantsService = async (filters: any): Promise<any> => {
     }
 };
 
+export const getTopPicksService = async (filters: any): Promise<any> => {
+    try {
+        const { lat, lng } = filters;
+
+        const topPicks = await prisma.$queryRaw`
+            SELECT r.*, 
+                (6371 * acos(
+                    cos(radians(${lat})) * cos(radians(r.latitude)) * cos(radians(r.longitude) - radians(${lng})) + 
+                    sin(radians(${lat})) * sin(radians(r.latitude))
+                )) AS distance,
+                ((r.rating * 0.8) + (LOG10(NULLIF(r.totalRatings, 0) + 1) * 0.2)) AS popularityScore
+            FROM Restaurant r
+            WHERE r.isActive = true
+            HAVING distance <= 20
+            ORDER BY popularityScore DESC
+            LIMIT 8
+        `;
+
+        return topPicks;
+    } 
+    catch (error) {
+        console.error(`Error While Getting Top Picks : ${error}`);
+        throw new Error(`Error While Getting Top Picks`);
+    };
+};
+
 export const getRestaurantByIdService = async (restaurantId: number): Promise<any> => {
     try {
-        const restaurant = await prisma.restaurant.findUnique({
+        const restaurant = await prisma.restaurant.findFirst({
             where: {
                 id: restaurantId,
                 isActive: true

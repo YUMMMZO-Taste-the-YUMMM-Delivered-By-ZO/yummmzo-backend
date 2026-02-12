@@ -1,11 +1,11 @@
 import { catchAsync } from "@/utils/catchAsync.util";
 import { Request, Response, NextFunction } from "express";
-import { MenuSchema, RestaurantDetailSchema, RestaurantFilterSchema } from "./restaurant.dataValidation";
+import { MenuSchema, RestaurantDetailSchema, RestaurantFilterSchema, TopPicksSchema } from "./restaurant.dataValidation";
 import { NotFoundError, ValidationError } from "@/utils/customError.util";
 import { redisConnection as redis } from "@/config/redis";
 import { sendSuccess } from "@/utils/response.util";
 import crypto from 'crypto';
-import { getRestaurantByIdService, getRestaurantMenuService, getRestaurantsService } from "./restaurant.service";
+import { getRestaurantByIdService, getRestaurantMenuService, getRestaurantsService, getTopPicksService } from "./restaurant.service";
 import { calculateHaversineJS } from "@/utils/distance.util";
 
 /**
@@ -20,7 +20,7 @@ import { calculateHaversineJS } from "@/utils/distance.util";
         *   - sort (optional): "rating" | "deliveryTime" | "distance" (default: distance)
         *   - page, limit (optional): Pagination - default page=1, limit=12
 */
-export const getRestaurantsController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+export const getRestaurantsController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {    
     // 1. Validate lat/lng presence
     const validatedData = RestaurantFilterSchema.safeParse(req.query); 
     if(!validatedData.success){
@@ -50,7 +50,44 @@ export const getRestaurantsController = catchAsync(async (req: Request, res: Res
 });
 
 /**
-    * API 4.2: Get Restaurant Details
+    * API 4.2: List Top Picks
+    * GET /api/v1/top-picks
+    
+    * Query Params:
+        *   - lat, lng (required): User's current location
+*/
+export const getTopPicksController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    console.log("Top Picks Hit")
+    // 1. Validate lat/lng presence
+    const validatedData = TopPicksSchema.safeParse(req.query); 
+    if(!validatedData.success){
+        return next(new ValidationError(validatedData.error.issues));
+    };
+
+    // 2. Build cache key: `topPicks:list:${md5(queryParams)}`
+    const queryString = JSON.stringify(validatedData.data);
+    const hash = crypto.createHash('md5').update(queryString).digest('hex');
+    const cacheKey = `topPicks:list:${hash}`;
+
+    // 3. If cache hit → return cached response
+    const cachedData = await redis.get(cacheKey);
+    if(cachedData){
+        const parsedData = JSON.parse(cachedData);
+        return sendSuccess("Top Picks fetched successfully From Cache." , parsedData , 200);
+    };
+
+    // 4. cache miss -> Call Service
+    const topPicks = await getTopPicksService(validatedData.data);
+
+    // 5. Cache result (TTL: 5 min)
+    await redis.set(cacheKey , JSON.stringify(topPicks) , 'EX' , 300);
+
+    // 6. Return topPicks
+    return sendSuccess("Top Picks fetched successfully" , { topPicks } , 200);
+});
+
+/**
+    * API 4.3: Get Restaurant Details
     * GET /api/v1/restaurants/:restaurantId
     
     * Params: restaurantId
@@ -114,7 +151,7 @@ export const getRestaurantByIdController = catchAsync(async (req: Request, res: 
 });
 
 /**
-    * API 4.3: Get Restaurant Menu
+    * API 4.4: Get Restaurant Menu
     * GET /api/v1/restaurants/:restaurantId/menu
     
     * Params: restaurantId
@@ -162,7 +199,7 @@ export const getRestaurantMenuController = catchAsync(async (req: Request, res: 
 });
 
 /**
-    * API 4.2: Get Restaurant Reviews
+    * API 4.5: Get Restaurant Reviews
     * GET /api/v1/restaurants/:restaurantId/reviews
     
     * Params: restaurantId
