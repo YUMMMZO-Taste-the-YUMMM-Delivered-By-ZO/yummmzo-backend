@@ -93,23 +93,10 @@ model User {
   isEmailVerified Boolean       @default(false)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  settings        User_Setting?
+  settings        Setting?
   addresses       Address[]
   orders          Order[]
   reviews         Review[]
-}
-
-model User_Setting {
-  id                  Int      @id @default(autoincrement())
-  userId              Int      @unique
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  isPushNotification  Boolean  @default(false)
-  isEmailNotification Boolean  @default(true)
-  isSMSNotification   Boolean  @default(false)
-  isDarkMode          Boolean  @default(true)
-  language            String   @default("English")
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
 }
 
 model Restaurant {
@@ -291,4 +278,16 @@ model Review {
   comment      String?    @db.VarChar(500)
   images       Json?      
   createdAt    DateTime   @default(now())
+}
+
+model Setting {
+  id                            Int        @id @default(autoincrement())
+  userId                        Int        @unique
+  user                          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isPushNotificationEnabled     Boolean    @default(false)
+  isEmailNotificationEnabled    Boolean    @default(true)
+  isSMSNotificationEnabled      Boolean    @default(false)
+  isDarkModeEnabled             Boolean    @default(true)
+  createdAt                     DateTime   @default(now())
+  updatedAt                     DateTime   @updatedAt
 }
