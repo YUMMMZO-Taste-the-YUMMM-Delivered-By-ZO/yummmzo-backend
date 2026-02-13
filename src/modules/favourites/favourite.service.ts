@@ -54,6 +54,25 @@ export const checkIfFavouriteExistService = async (userId: number, restaurantId:
     };
 };
 
+export const getFavouriteIdsService = async (userId: number): Promise<any> => {
+    try {
+        const favourites = await prisma.favourite.findMany({
+            where: {
+                userId: userId
+            },
+            select: {
+                restaurantId: true
+            }
+        });
+        return favourites.map(f => f.restaurantId);
+    } 
+    catch (error) {
+        console.log(`Error While Getting Favourites IDs : ${error}`);
+        throw new Error(`Error While Getting Favourites IDs : ${error}`);   
+    }
+};
+
+
 export const toggleFavouriteService = async ({ favouriteId, userId, restaurantId, action }: { favouriteId?: number; userId?: number; restaurantId?: number; action: 'ADD' | 'REMOVE'; }): Promise<any> => {
     try {
         let favourite;

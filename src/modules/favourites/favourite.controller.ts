@@ -2,7 +2,7 @@ import { redisConnection as redis } from "@/config/redis";
 import { catchAsync } from "@/utils/catchAsync.util";
 import { UnauthorizedError, NotFoundError, BadRequestError } from "@/utils/customError.util";
 import { Request, Response, NextFunction } from "express";
-import { checkIfFavouriteExistService, getFavouritesService, toggleFavouriteService } from "./favourite.service";
+import { checkIfFavouriteExistService, getFavouriteIdsService, getFavouritesService, toggleFavouriteService } from "./favourite.service";
 import { sendSuccess } from "@/utils/response.util";
 import { getRestaurantByIdService } from "../restaurant/restaurant.service";
 
@@ -34,6 +34,37 @@ export const getFavouritesController = catchAsync(async (req: Request, res: Resp
 
     // 5. Response: Return 200 with list of favourite restaurants.
     return sendSuccess("Favourites fetched successfully", favourites, 200);
+});
+
+/**
+    * API: Get Favourite Restaurant IDs
+    * GET /api/v1/favourites/ids
+*/
+export const getFavouriteIdsController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    // 1. Extract userId from req.user (set by authMiddleware).
+    const authUser = (req as any).user;
+    if (!authUser) {
+        return next(new UnauthorizedError("User session not found"));
+    };
+    
+    const userId = authUser.id;
+    const cacheKey = `favourites:ids:${userId}`;
+    // 2. Redis check: key = `favourites:ids:${userId}` → cache hit? Return directly.
+    const cachedIds = await redis.get(cacheKey);
+    if(cachedIds){
+        if(cachedIds){
+            return sendSuccess("Fetched", JSON.parse(cachedIds), 200);  
+        };
+    };
+
+    // 3. Cache miss → call getFavouriteIdsService(userId).
+    const ids = await getFavouriteIdsService(Number(userId));
+
+    // 4. Store result in Redis with TTL 300 (5 min).
+    await redis.set(cacheKey , JSON.stringify(ids) , 'EX' , 300);
+
+    // 5. Response: Return 200 with array of restaurantIds → [3, 7, 12]
+    return sendSuccess("Favourite IDs fetched", ids, 200);
 });
 
 /**
@@ -82,6 +113,7 @@ export const toggleFavouriteController = catchAsync(async (req: Request, res: Re
 
     // 6. Redis: Delete cache key `favourites:${userId}` (invalidate stale data)
     await redis.del(cacheKey);
+    await redis.del(`favourites:ids:${userId}`);
 
     // 7. Response: Return 200 with { action: "added" | "removed", restaurantId }
     return sendSuccess("Favourite toggled successfully", { action, restaurantId: Number(restaurantId) }, 200);
