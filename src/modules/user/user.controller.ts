@@ -39,7 +39,7 @@ export const getProfileController = catchAsync(async (req: Request, res: Respons
     };
     
     //    - Store result in Redis `user:profile:{userId}` with 5 min TTL.
-    await redis.set(`user:profile:${userId}` , JSON.stringify(user) , 'EX' , 300);
+    await redis.set(cacheKey , JSON.stringify(user) , 'EX' , 300);
 
     // 5. Response: Return 200 with user data.
     return sendSuccess("Successfully Retrieved User Profile" , user , 200);

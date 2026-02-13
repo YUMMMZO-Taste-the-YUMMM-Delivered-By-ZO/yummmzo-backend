@@ -97,6 +97,7 @@ model User {
   addresses       Address[]
   orders          Order[]
   reviews         Review[]
+  favourites    Favourite[] 
 }
 
 model Restaurant {
@@ -123,6 +124,7 @@ model Restaurant {
   orders       Order[]
   reviews      Review[]
   coupons      Coupon[]
+  favourites    Favourite[]
 }
 
 model Cuisine {
@@ -159,6 +161,16 @@ model Menu_Item {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   orderItems  Order_Item[]
+}
+
+model Favourite {
+  id           Int        @id @default(autoincrement())
+  userId       Int
+  restaurantId Int
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  @@unique([userId, restaurantId])
 }
 
 model Address {
