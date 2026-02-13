@@ -35,8 +35,8 @@ export const getAddressesController = catchAsync(async (req: Request, res: Respo
     // 4. If Cache Miss: Query Prisma for all addresses where userId matches.
     const addresses = await getAddressesService(Number(userId));
 
-    // 5. Redis Store: Save result in `user:addresses:{userId}` (TTL: 10 min).
-    await redis.set(cacheKey , JSON.stringify(addresses) , 'EX' , 600);
+    // 5. Redis Store: Save result in `user:addresses:{userId}` (TTL: 5 min).
+    await redis.set(cacheKey , JSON.stringify(addresses) , 'EX' , 300);
 
     // 6. Response: Return 200 with address array.
     return sendSuccess("Addresses retrieved successfully", addresses, 200);
@@ -163,7 +163,7 @@ export const updateAddressController = catchAsync(async (req: Request, res: Resp
     const updatedAddress = await updateAddressService(Number(userId) , Number(addressId) , addressData);
 
     // 5. Cache Invalidation: Delete `user:addresses:{userId}` from Redis.
-    await redis.del(`user:address:${userId}`);
+    await redis.del(`user:addresses:${userId}`);
 
     // 6. Response: Return 200 with updated address.
     return sendSuccess("Address updated successfully", updatedAddress, 200);
@@ -198,7 +198,7 @@ export const setDefaultAddressController = catchAsync(async (req: Request, res: 
     const result = await setDefaultAddressService(Number(userId) , Number(addressId));
 
     // 3. Cache Invalidation: Delete `user:addresses:{userId}` from Redis.
-    await redis.del(`user:address:${userId}`);
+    await redis.del(`user:addresses:${userId}`);
 
     // 4. Response: Return 200 "Default address updated".
     return sendSuccess("Default address updated successfully", result[1], 200);
