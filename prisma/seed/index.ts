@@ -165,7 +165,7 @@ async function seedRestaurant(
                     price: item.price,
                     image: item.image || null,
                     isVeg: item.isVeg,
-                    inStock: Math.random() > 0.1,
+                    inStock: true,
                     isBestseller: Math.random() > 0.7,
                     rating: getRandomRating(),
                     spiceLevel: item.spiceLevel || getRandomSpiceLevel(item.name, categoryTemplate.name)

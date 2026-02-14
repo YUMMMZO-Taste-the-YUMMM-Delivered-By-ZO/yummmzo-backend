@@ -99,9 +99,9 @@ export const getCartService = async (cart: any): Promise<any> => {
     }
 };
 
-export const checkIfMenuItemExistService = async (menuItemId: number , restaurantId: number): Promise<any> => {
+export const checkIfMenuItemExistService = async (menuItemId: number, restaurantId: number): Promise<any> => {
     try {
-        const item = await prisma.menu_Item.findUnique({
+        const item = await prisma.menu_Item.findFirst({
             where: {
                 id: menuItemId,
                 inStock: true,
@@ -110,7 +110,6 @@ export const checkIfMenuItemExistService = async (menuItemId: number , restauran
                 }
             }
         });
-
         return item;
     }
     catch (error) {

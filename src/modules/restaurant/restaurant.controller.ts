@@ -193,7 +193,7 @@ export const getRestaurantMenuController = catchAsync(async (req: Request, res: 
     };
 
     // 1. Cache key: `restaurant:menu:${queryString}`
-    const queryString = JSON.stringify(validatedData.data);
+    const queryString = JSON.stringify({ restaurantId, ...validatedData.data });
     const hash = crypto.createHash('md5').update(queryString).digest('hex');
     const cacheKey = `restaurants:menu:${hash}`;
 
