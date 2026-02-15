@@ -5,6 +5,10 @@ import { menuItemsByCategory } from "./data/menuItems";
 import { patnaRestaurants } from "./data/restaurants/patna";
 import { delhiRestaurants } from "./data/restaurants/delhi";
 import { globalCoupons, restaurantCouponTemplates, CouponTemplate } from "./data/coupons";
+import { bangaloreRestaurants } from './data/restaurants/bangalore';
+import { sfRestaurants } from './data/restaurants/sf';
+import { kolkataRestaurants } from './data/restaurants/kolkata';
+import { darjeelingRestaurants } from "./data/restaurants/darjelling";
 
 const prisma = new PrismaClient();
 
@@ -280,6 +284,10 @@ async function main() {
 
     await seedRestaurantsForCity("Patna", patnaRestaurants, cuisineRecords);
     await seedRestaurantsForCity("Delhi", delhiRestaurants, cuisineRecords);
+    await seedRestaurantsForCity("Bangalore", bangaloreRestaurants, cuisineRecords);
+    await seedRestaurantsForCity("San Francisco", sfRestaurants, cuisineRecords);
+    await seedRestaurantsForCity("Kolkata", kolkataRestaurants, cuisineRecords);
+    await seedRestaurantsForCity("Darjeeling", darjeelingRestaurants, cuisineRecords);
 
     // Get all restaurant IDs and seed coupons
     const allRestaurants = await prisma.restaurant.findMany({ select: { id: true } });
