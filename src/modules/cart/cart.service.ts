@@ -2,7 +2,6 @@ import { prisma } from "@/config/database";
 import { redisConnection as redis } from "@/config/redis";
 import { validateCouponService } from "../coupon/coupon.service";
 
-
 export const getCartService = async (cart: any): Promise<any> => {
     try {
         // Step 1: Initial state set karo. Ek `wasModified` flag ko false rakho.
@@ -73,13 +72,15 @@ export const getCartService = async (cart: any): Promise<any> => {
         const gst = itemTotal * 0.05;
         const deliveryFee = 40;
         const packagingFee = 10;
-        const total = itemTotal + gst + deliveryFee + packagingFee;
+        const discount = cart.coupon ? cart.coupon.discountAmount : 0; 
+        const total = itemTotal + gst + deliveryFee + packagingFee - discount;
 
         cart.bill = {
             itemTotal,
             gst,
             deliveryFee,
             packagingFee,
+            discount,
             total
         };
         cart.restaurantDetails = restaurant;
@@ -162,7 +163,7 @@ export const applyCouponService = async ({ userId, code }: { userId: number; cod
         const gst = itemTotal * 0.05;
         const deliveryFee = 40;
         const packagingFee = 10;
-        const discount = couponResult.discountAmount;
+        const discount = cart.coupon ? cart.coupon.discountAmount : 0;
         const total = itemTotal + gst + deliveryFee + packagingFee - discount;
 
         // 7. Update cart.bill with new values

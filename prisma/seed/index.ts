@@ -203,7 +203,7 @@ async function seedRestaurantsForCity(
 async function seedCoupons(restaurantIds: number[]) {
     console.log("\n🎟️  Seeding coupons...");
 
-    // 1. Seed global coupons (no restaurantId)
+    // 1. Global coupons
     for (const coupon of globalCoupons) {
         const validFrom = new Date();
         const validTill = new Date();
@@ -226,11 +226,10 @@ async function seedCoupons(restaurantIds: number[]) {
     }
     console.log(`   ✅ Seeded ${globalCoupons.length} global coupons`);
 
-    // 2. Seed restaurant-specific coupons (30% of restaurants get 1-2 coupons)
-    const restaurantsWithCoupons = getRandomElements(restaurantIds, Math.floor(restaurantIds.length * 0.3));
+    // 2. Every restaurant gets 1-2 coupons (changed from 30% → 100%)
     let restaurantCouponCount = 0;
 
-    for (const restaurantId of restaurantsWithCoupons) {
+    for (const restaurantId of restaurantIds) {
         const couponCount = getRandomNumber(1, 2);
         const selectedTemplates = getRandomElements(restaurantCouponTemplates, couponCount);
 
@@ -241,7 +240,7 @@ async function seedCoupons(restaurantIds: number[]) {
 
             await prisma.coupon.create({
                 data: {
-                    code: getRandomCouponCode(template, restaurantId),
+                    code: `${template.code}_R${restaurantId}`,
                     description: template.description,
                     discountType: template.discountType,
                     discountValue: template.discountValue,
