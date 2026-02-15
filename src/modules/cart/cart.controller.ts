@@ -3,8 +3,8 @@ import { catchAsync } from "@/utils/catchAsync.util";
 import { ConflictError, NotFoundError, UnauthorizedError, ValidationError } from "@/utils/customError.util";
 import { sendSuccess } from "@/utils/response.util";
 import { Request, Response, NextFunction } from "express";
-import { checkIfMenuItemExistService, getCartService } from "./cart.service";
-import { AddItemToCartSchema, UpdateCartItemSchema } from "./cart.dataValidation";
+import { applyCouponService, checkIfMenuItemExistService, getCartService, removeCouponService } from "./cart.service";
+import { AddItemToCartSchema, ApplyCouponSchema, UpdateCartItemSchema } from "./cart.dataValidation";
 
 /**
     * API 5.1: Get Cart
@@ -24,7 +24,7 @@ export const getCartController = catchAsync(async (req: Request, res: Response, 
 
     const cacheKey = `cart:${userId}`;
     const cartData = await redis.get(cacheKey);
-    
+
     // 2. If Cart Empty: Return 200 with an empty structure and zeroed bill.
     if(!cartData){
         let result = {
@@ -231,26 +231,53 @@ export const clearCartController = catchAsync(async (req: Request, res: Response
     * API 5.6: Apply Coupon
     * POST /api/v1/cart/coupon
 */
-export const applyCouponController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // 1. Validation: Fetch coupon from DB by `code`.
-    // 2. Eligibility Checks:
-    //    - Expiry: `validTill` > now.
-    //    - Min Order: Cart total >= `minOrderValue`.
-    //    - First Order: If `isFirstOrderOnly`, check user's order count in DB.
-    //    - Restaurant: If `restaurantId` is set on coupon, ensure it matches cart.
-    //    - Usage: Check `maxUsagePerUser` and global `maxUsage`.
-    // 3. Discount Calculation: Apply percentage or flat discount (capped at `maxDiscount`).
-    // 4. Update Cart: Attach `coupon` object to the Redis cart.
-    // 5. Response: Return 200 with the discount amount applied.
+export const applyCouponController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    // 1. Validate body: { code: string } using Zod
+    const validatedData = ApplyCouponSchema.safeParse(req.body);
+    if(!validatedData.success){
+        return next(new ValidationError(validatedData.error.issues));
+    };
+
+    const { code } = validatedData.data;
+
+    // 2. Auth check → get userId
+    const authUser = (req as any).user;
+    if (!authUser) {
+        return next(new UnauthorizedError("User session not found"));
+    };
+
+    const userId = authUser.id;
+    if (!userId){
+        return next(new ValidationError([] , "User ID is required"));
+    };
+
+    // 3. Call applyCouponService({ userId, code })
+    const updatedCart = await applyCouponService({ userId, code });
+
+    // 4. sendSuccess "Coupon applied successfully." with updated cart, 200
+    return sendSuccess("Coupon applied successfully.", updatedCart, 200);
 });
 
 /**
     * API 5.7: Remove Coupon
     * DELETE /api/v1/cart/coupon
 */
-export const removeCouponController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // 1. Fetch Redis cart.
-    // 2. Set `coupon` to null and reset discount values in the bill.
-    // 3. Save to Redis.
-    // 4. Response: Return 200.
+export const removeCouponController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    // 1. Auth check → get userId
+    const authUser = (req as any).user;
+    if (!authUser) {
+        return next(new UnauthorizedError("User session not found"));
+    };
+
+    const userId = authUser.id;
+    if (!userId){
+        return next(new ValidationError([] , "User ID is required"));
+    };
+
+    // 2. Call removeCouponService(userId)
+    //    - Wrap in try-catch: if error.statusCode → return next(new ValidationError([], error.message))
+    const updatedCart = await removeCouponService(Number(userId));
+
+    // 3. sendSuccess "Coupon removed successfully." with updated cart, 200
+    return sendSuccess("Coupon applied successfully.", updatedCart, 200);
 });

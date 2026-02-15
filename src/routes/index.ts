@@ -20,10 +20,10 @@ router.use('/address', addressRoutes);
 router.use('/restaurant', restaurantRoutes);
 router.use('/favourites' , favouriteRoutes);
 router.use('/cart', cartRoutes);
+router.use('/coupon', couponRoutes);
 // router.use('/order' , orderRoutes);
 router.use('/payment', paymentRoutes);
 router.use('/review', reviewRoutes);
-router.use('/coupon', couponRoutes);
 router.use('/setting', settingRoutes);
 router.use('/ai', aiRoutes);
 

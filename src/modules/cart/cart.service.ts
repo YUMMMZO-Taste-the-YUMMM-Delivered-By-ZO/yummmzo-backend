@@ -1,4 +1,6 @@
 import { prisma } from "@/config/database";
+import { redisConnection as redis } from "@/config/redis";
+import { validateCouponService } from "../coupon/coupon.service";
 
 
 export const getCartService = async (cart: any): Promise<any> => {
@@ -118,24 +120,118 @@ export const checkIfMenuItemExistService = async (menuItemId: number, restaurant
     };
 };
 
-export const applyCouponService = async (): Promise<void> => {
-    // logic...
+export const applyCouponService = async ({ userId, code }: { userId: number; code: string; }): Promise<any> => {
     try {
-        
+        // 1. Fetch Redis cart using key `cart:{userId}` → if empty, throw 404 "Cart not found."
+        const cacheKey = `cart:${userId}`;
+
+        const cachedCart = await redis.get(cacheKey);
+        if (!cachedCart){
+            throw { statusCode: 404, message: "Cart not found." };
+        };
+
+        // 2. Parse cart JSON   
+        const cart = JSON.parse(cachedCart);
+
+        // 3. Extract restaurantId and calculate cartTotal from cart.items (price * quantity)
+        const restaurantId = cart.restaurantId;
+        const cartTotal = cart.items.reduce((acc: number, item: any) => {
+            return acc + (item.price * item.quantity);
+        }, 0);
+
+        // 4. Call validateCouponService({ code, restaurantId, cartTotal }) → get discountAmount
+        const couponResult = await validateCouponService({ code, restaurantId, cartTotal });
+
+        // 5. Attach coupon to cart:
+        //    cart.coupon = { couponId, code, discountType, discountAmount }
+        cart.coupon = {
+            couponId: couponResult.couponId,
+            code: couponResult.code,
+            discountType: couponResult.discountType,
+            discountAmount: couponResult.discountAmount
+        };
+
+        // 6. Recalculate bill:
+        //    - itemTotal = sum of (price * quantity)
+        //    - gst = itemTotal * 0.05
+        //    - deliveryFee = 40
+        //    - packagingFee = 10
+        //    - discount = discountAmount
+        //    - total = itemTotal + gst + deliveryFee + packagingFee - discount
+        const itemTotal = cartTotal;
+        const gst = itemTotal * 0.05;
+        const deliveryFee = 40;
+        const packagingFee = 10;
+        const discount = couponResult.discountAmount;
+        const total = itemTotal + gst + deliveryFee + packagingFee - discount;
+
+        // 7. Update cart.bill with new values
+        cart.bill = {
+            itemTotal,
+            gst,
+            deliveryFee,
+            packagingFee,
+            discount,
+            total
+        };
+
+        // 8. Save updated cart to Redis (TTL: 600)
+        await redis.set(cacheKey, JSON.stringify(cart), 'EX', 600);
+
+        // 9. Return updated cart
+        return cart;
     }
-    catch (error) {
-        console.log(`Error While Getting All Restaurants : ${error}`);
-        throw new Error(`Error While Getting All Restaurants : ${error}`);
+    catch (error: any) {
+        console.log(`Error While Applying Coupon : ${error}`);
+        throw new Error(`Error While Applying Coupon : ${error}`);
     }
 };
 
-export const removeCouponService = async (): Promise<void> => {
-    // logic...
+export const removeCouponService = async (userId: number): Promise<any> => {
     try {
-        
+        // 1. Fetch Redis cart
+        const cacheKey = `cart:${userId}`;
+        const cachedCart = await redis.get(cacheKey);
+        if (!cachedCart) throw { statusCode: 404, message: "Cart not found." };
+
+        // 2. Parse cart
+        const cart = JSON.parse(cachedCart);
+
+        // 3. No coupon applied check
+        if (!cart.coupon){
+            throw { statusCode: 400, message: "No coupon applied." };
+        };
+
+        // 4. Remove coupon
+        cart.coupon = null;
+
+        // 5. Recalculate bill without discount
+        const itemTotal = cart.items.reduce((acc: number, item: any) => {
+            return acc + (item.price * item.quantity);
+        }, 0);
+        const gst = itemTotal * 0.05;
+        const deliveryFee = 40;
+        const packagingFee = 10;
+        const total = itemTotal + gst + deliveryFee + packagingFee;
+
+        // 6. Update bill
+        cart.bill = {
+            itemTotal,
+            gst,
+            deliveryFee,
+            packagingFee,
+            discount: 0,
+            total
+        };
+
+        // 7. Save to Redis
+        await redis.set(cacheKey, JSON.stringify(cart), 'EX', 600);
+
+        // 8. Return updated cart
+        return cart;
     }
-    catch (error) {
-        console.log(`Error While Getting All Restaurants : ${error}`);
-        throw new Error(`Error While Getting All Restaurants : ${error}`);
+    catch (error: any) {
+        console.log(`Error While Removing Coupon : ${error}`);
+        throw new Error(`Error While Removing Coupon : ${error}`);
     }
 };
