@@ -33,14 +33,14 @@ export const getRestaurantsController = catchAsync(async (req: Request, res: Res
     const cachedData = await redis.get(cacheKey);
     if(cachedData){
         const parsedData = JSON.parse(cachedData);
-        return sendSuccess("Restaurants fetched successfully From Cache." , parsedData , 200);
+        return sendSuccess("Restaurants fetched successfully from cache." , parsedData , 200);
     };
 
-    const restaurants = await getRestaurantsService(validatedData.data);
+    const data = await getRestaurantsService(validatedData.data);
 
-    await redis.set(cacheKey , JSON.stringify(restaurants) , 'EX' , 300);
+    await redis.set(cacheKey , JSON.stringify(data) , 'EX' , 300);
 
-    return sendSuccess("Restaurants fetched successfully" , { restaurants } , 200);
+    return sendSuccess("Restaurants fetched successfully" , data , 200);
 });
 
 /**
@@ -48,18 +48,17 @@ export const getRestaurantsController = catchAsync(async (req: Request, res: Res
     * GET /api/v1/cuisines
 */
 export const getCuisinesController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    const cacheKey = `topPicks:list:${req.ip}`;
+    const cacheKey = `cuisines:list:all`;
 
     const cachedData = await redis.get(cacheKey);
     if(cachedData){
         const parsedData = JSON.parse(cachedData);
-        return sendSuccess("Cuisines fetched successfully From Cache." , parsedData , 200);
+        return sendSuccess("Cuisines fetched successfully from cache." , parsedData , 200);
     };
 
     const cuisines = await getCuisinesService();
 
-    await redis.set(cacheKey , JSON.stringify(cuisines) , 'EX' , 300);
-
+    await redis.set(cacheKey , JSON.stringify({ cuisines }) , 'EX' , 3600);
     return sendSuccess("Cuisines fetched successfully" , { cuisines } , 200);
 });
 
@@ -83,12 +82,12 @@ export const getTopPicksController = catchAsync(async (req: Request, res: Respon
     const cachedData = await redis.get(cacheKey);
     if(cachedData){
         const parsedData = JSON.parse(cachedData);
-        return sendSuccess("Top Picks fetched successfully From Cache." , parsedData , 200);
+        return sendSuccess("Top Picks fetched successfully from cache." , parsedData , 200);
     };
 
     const topPicks = await getTopPicksService(validatedData.data);
 
-    await redis.set(cacheKey , JSON.stringify(topPicks) , 'EX' , 300);
+    await redis.set(cacheKey , JSON.stringify({ topPicks }) , 'EX' , 300);
 
     return sendSuccess("Top Picks fetched successfully" , { topPicks } , 200);
 });
@@ -148,7 +147,7 @@ export const getRestaurantByIdController = catchAsync(async (req: Request, res: 
         distance
     };
 
-    return sendSuccess("Restaurant details fetched", finalResult, 200);
+    return sendSuccess("Restaurant details fetched" , finalResult , 200);
 });
 
 /**
@@ -185,6 +184,5 @@ export const getRestaurantMenuController = catchAsync(async (req: Request, res: 
     };
     
     await redis.set(cacheKey , JSON.stringify(menu) , 'EX' , 900);
-
     return sendSuccess("Menu fetched successfully" , menu , 200);
 });

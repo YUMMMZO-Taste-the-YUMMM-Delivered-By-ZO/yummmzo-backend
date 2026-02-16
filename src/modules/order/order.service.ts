@@ -203,8 +203,14 @@ export const getOrderByIdService = async (orderId: number): Promise<any> => {
         const order = await prisma.order.findUnique({
             where: { id: orderId },
             include: {
-                restaurant: { select: { id: true, name: true, image: true, location: true } },
-                items: true,
+                restaurant: { select: { id: true, name: true, image: true, location: true, deliveryTime: true } },
+                items: {
+                    include: {
+                        menuItem: {
+                            select: { image: true }
+                        }
+                    }
+                },
                 address: true,
                 statusHistory: { orderBy: { createdAt: 'asc' } }
             }
