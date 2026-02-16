@@ -4,7 +4,7 @@ import z from 'zod';
 export const CreateOrderSchema = z.object({
     addressId: z.number(),
     deliveryInstruction: z.string().min(10 , "Delivery Instruction should be minimum of 10 characters.").max(100 , "Delivery Instruction should be maximum of 100 characters.").optional(),
-    paymentMethod: z.enum(['ONLINE' , 'COD'])
+    paymentMethod: z.string().transform((val) => val.toUpperCase()).pipe(z.enum(['MOCK_ONLINE', 'COD']))
 });
 
 export type CreateOrderSchemaData = z.infer<typeof CreateOrderSchema>;

@@ -6,11 +6,7 @@ import restaurantRoutes from '../modules/restaurant/restaurant.routes';
 import favouriteRoutes from '../modules/favourites/favourite.routes';
 import cartRoutes from '../modules/cart/cart.routes';
 import orderRoutes from '../modules/order/order.routes';
-import paymentRoutes from '../modules/payment/payment.routes';
-import reviewRoutes from '../modules/review/review.routes';
 import couponRoutes from '../modules/coupon/coupon.routes';
-import settingRoutes from '../modules/setting/setting.routes';
-import aiRoutes from '../modules/ai/ai.routes';
 
 const router = Router();
 
@@ -21,10 +17,6 @@ router.use('/restaurant', restaurantRoutes);
 router.use('/favourites' , favouriteRoutes);
 router.use('/cart', cartRoutes);
 router.use('/coupon', couponRoutes);
-// router.use('/order' , orderRoutes);
-router.use('/payment', paymentRoutes);
-router.use('/review', reviewRoutes);
-router.use('/setting', settingRoutes);
-router.use('/ai', aiRoutes);
+router.use('/order' , orderRoutes);
 
 export default router;

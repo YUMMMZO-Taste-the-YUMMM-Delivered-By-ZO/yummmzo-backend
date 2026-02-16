@@ -22,7 +22,7 @@ export const checkifAddressDeliverableService = async (userId: number, addressId
         
         // 4. Check if any coordinate is missing; if so, return false
         if (userLat === null || userLng === null || restLat === null || restLng === null) {
-            return false;
+            return true;
         };
         
         // 5. Apply Haversine formula to find distance 'd' in kilometers

@@ -112,12 +112,3 @@ export const setDefaultAddressService = async (userId: number, addressId: number
         throw new Error(`Error While Deleting a User Address : ${error}`);
     }
 };
-
-export const deleteAddressService = async (): Promise<void> => {
-    try {
-        
-    }
-    catch (error) {
-        
-    }
-};

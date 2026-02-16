@@ -87,12 +87,3 @@ export const changePasswordService = async (userId: number , newPassword: string
         throw new Error(`Error While Updating User Password : ${error}`);
     }
 };
-
-export const deleteAccountService = async (): Promise<void> => {
-    try {
-        
-    }
-    catch (error) {
-        
-    }
-};

@@ -11,7 +11,6 @@ import { AddItemToCartSchema, ApplyCouponSchema, UpdateCartItemSchema } from "./
     * GET /api/v1/cart
 */
 export const getCartController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    // 1. Fetch cart from Redis using key `cart:{userId}`.
     const authUser = (req as any).user;
     if (!authUser) {
         return next(new UnauthorizedError("User session not found"));
@@ -25,7 +24,6 @@ export const getCartController = catchAsync(async (req: Request, res: Response, 
     const cacheKey = `cart:${userId}`;
     const cartData = await redis.get(cacheKey);
 
-    // 2. If Cart Empty: Return 200 with an empty structure and zeroed bill.
     if(!cartData){
         let result = {
             restaurant: null,
@@ -43,14 +41,12 @@ export const getCartController = catchAsync(async (req: Request, res: Response, 
         return sendSuccess("Cart is empty." , result , 200);
     };
 
-    // 3. Real-time Sync: Cross-check all items in Redis against the DB (Prisma) to ensure 'inStock' and 'price' haven't changed.
     const { syncedData , wasModified } = await getCartService(JSON.parse(cartData));
 
     if(wasModified){
         await redis.set(cacheKey , JSON.stringify(syncedData) , 'EX' , 600);
     };
 
-    // 4. Response: Return 200 with restaurant details, items list, and the final bill breakdown.
     return sendSuccess("Successfully Retrieved Users Cart." , syncedData , 200);
 });
 
@@ -59,7 +55,6 @@ export const getCartController = catchAsync(async (req: Request, res: Response, 
     * POST /api/v1/cart/items
 */
 export const addCartItemController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    // 1. Validation: Validate quantity (1-10) and customization options using Zod.
     const validatedData = AddItemToCartSchema.safeParse(req.body);
     if(!validatedData.success){
         return next(new ValidationError(validatedData.error.issues));
@@ -77,25 +72,19 @@ export const addCartItemController = catchAsync(async (req: Request, res: Respon
 
     const { restaurantId , menuItemId , quantity } = validatedData.data;
 
-    // 2. State Check: Retrieve existing cart from Redis `cart:{userId}`.
     const cacheKey = `cart:${userId}`;
     const cachedCart = await redis.get(cacheKey);
 
-    // 3. Conflict Check: If request `restaurantId` != existing cart `restaurantId`, return 400 "Clear cart from previous restaurant?".
     let cart = cachedCart ? JSON.parse(cachedCart) : {restaurantId , items: []};
     if (cart.restaurantId !== restaurantId) {
         return next(new ConflictError("Clear cart from previous restaurant."));
     };
     
-    // 4. DB Verification: Check if `itemId` exists and is `inStock`.
     const item = await checkIfMenuItemExistService(Number(menuItemId) , restaurantId);
     if(!item){
         return next(new NotFoundError("This item doesn't belong to the selected restaurant or is out of stock."));
     };
 
-    // 5. Logic:
-    //    - If item + same customizations exists, increment quantity.
-    //    - Else, push new item to the items array.
     const existingItemIndex = cart.items.findIndex((i: any) => i.menuItemid === menuItemId);
     if(existingItemIndex > -1){
         let newQuantity = cart.items[existingItemIndex].quantity + quantity;
@@ -109,11 +98,9 @@ export const addCartItemController = catchAsync(async (req: Request, res: Respon
             quantity
         })
     };
-    
-    // 6. Redis Store: Save updated JSON in `cart:{userId}` (TTL: 7 days).
+
     await redis.set(cacheKey , JSON.stringify(cart) , 'EX' , 600);
 
-    // 7. Response: Return 200 with updated cart summary.
     return sendSuccess("Item Added to Your Cart." , cart , 201);
 });
 
@@ -122,7 +109,6 @@ export const addCartItemController = catchAsync(async (req: Request, res: Respon
     * PATCH /api/v1/cart/items/:cartItemId
 */
 export const updateCartItemController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    // 1. Extract `quantity` from body.
     const validatedData = UpdateCartItemSchema.safeParse(req.body);
     if(!validatedData.success){
         return next(new ValidationError(validatedData.error.issues));
@@ -141,7 +127,6 @@ export const updateCartItemController = catchAsync(async (req: Request, res: Res
     const { cartItemId } = req.params;
     const { quantity } = validatedData.data;
 
-    // 2. Fetch and Parse
     const cacheKey = `cart:${userId}`;
     const cachedCart = await redis.get(cacheKey);
     if (!cachedCart){
@@ -149,8 +134,7 @@ export const updateCartItemController = catchAsync(async (req: Request, res: Res
     };
 
     let cart = JSON.parse(cachedCart);
-    
-    // 3. Update or Remove Logic
+
     const itemIndex = cart.items.findIndex((i: any) => i.menuItemId === Number(cartItemId));
     if (itemIndex === -1) {
         return next(new NotFoundError("Item not in cart."));
@@ -168,7 +152,6 @@ export const updateCartItemController = catchAsync(async (req: Request, res: Res
         cart.items[itemIndex].quantity = quantity;
     };
 
-    // 4. Bill Recalculation logic
     let newItemTotal = 0;
     cart.items.forEach((item: any) => {
         newItemTotal = newItemTotal + (item.price * item.quantity);
@@ -179,14 +162,11 @@ export const updateCartItemController = catchAsync(async (req: Request, res: Res
     const packagingFee = 10;
     const total = newItemTotal + gst + deliveryFee + packagingFee;
 
-    // 5. Update Cart State
     cart.bill = { itemTotal: newItemTotal, gst, deliveryFee, packagingFee, total };
     cart.updatedAt = new Date().toISOString();
 
-    // 6. Redis Store
     await redis.set(cacheKey, JSON.stringify(cart), 'EX', 600);
 
-    // 7. Response: Return 200 success.
     return sendSuccess("Cart updated successfully.", cart, 200);
 });
 
@@ -195,7 +175,6 @@ export const updateCartItemController = catchAsync(async (req: Request, res: Res
     * DELETE /api/v1/cart
 */
 export const clearCartController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    // 1. Delete the `cart:{userId}` key from Redis.
     const authUser = (req as any).user;
     if (!authUser) {
         return next(new UnauthorizedError("User session not found"));
@@ -223,7 +202,6 @@ export const clearCartController = catchAsync(async (req: Request, res: Response
         }
     };
 
-    // 2. Response: Return 200 with an empty cart object.
     return sendSuccess("Cart Cleared Successfully" , emptyCart , 200);
 });
 
@@ -232,7 +210,6 @@ export const clearCartController = catchAsync(async (req: Request, res: Response
     * POST /api/v1/cart/coupon
 */
 export const applyCouponController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    // 1. Validate body: { code: string } using Zod
     const validatedData = ApplyCouponSchema.safeParse(req.body);
     if(!validatedData.success){
         return next(new ValidationError(validatedData.error.issues));
@@ -240,7 +217,6 @@ export const applyCouponController = catchAsync(async (req: Request, res: Respon
 
     const { code } = validatedData.data;
 
-    // 2. Auth check → get userId
     const authUser = (req as any).user;
     if (!authUser) {
         return next(new UnauthorizedError("User session not found"));
@@ -251,10 +227,8 @@ export const applyCouponController = catchAsync(async (req: Request, res: Respon
         return next(new ValidationError([] , "User ID is required"));
     };
 
-    // 3. Call applyCouponService({ userId, code })
     const updatedCart = await applyCouponService({ userId, code });
 
-    // 4. sendSuccess "Coupon applied successfully." with updated cart, 200
     return sendSuccess("Coupon applied successfully.", updatedCart, 200);
 });
 
@@ -263,7 +237,6 @@ export const applyCouponController = catchAsync(async (req: Request, res: Respon
     * DELETE /api/v1/cart/coupon
 */
 export const removeCouponController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    // 1. Auth check → get userId
     const authUser = (req as any).user;
     if (!authUser) {
         return next(new UnauthorizedError("User session not found"));
@@ -274,10 +247,7 @@ export const removeCouponController = catchAsync(async (req: Request, res: Respo
         return next(new ValidationError([] , "User ID is required"));
     };
 
-    // 2. Call removeCouponService(userId)
-    //    - Wrap in try-catch: if error.statusCode → return next(new ValidationError([], error.message))
     const updatedCart = await removeCouponService(Number(userId));
 
-    // 3. sendSuccess "Coupon removed successfully." with updated cart, 200
     return sendSuccess("Coupon applied successfully.", updatedCart, 200);
 });

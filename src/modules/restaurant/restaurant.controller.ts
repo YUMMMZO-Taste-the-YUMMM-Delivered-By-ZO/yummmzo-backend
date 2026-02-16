@@ -21,31 +21,25 @@ import { calculateHaversineJS } from "@/utils/distance.util";
         *   - page, limit (optional): Pagination - default page=1, limit=12
 */
 export const getRestaurantsController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {    
-    // 1. Validate lat/lng presence
     const validatedData = RestaurantFilterSchema.safeParse(req.query); 
     if(!validatedData.success){
         return next(new ValidationError(validatedData.error.issues));
     };
 
-    // 2. Build cache key: `restaurants:list:${md5(queryParams)}`
     const queryString = JSON.stringify(validatedData.data);
     const hash = crypto.createHash('md5').update(queryString).digest('hex');
     const cacheKey = `restaurants:list:${hash}`;
 
-    // 3. If cache hit → return cached response
     const cachedData = await redis.get(cacheKey);
     if(cachedData){
         const parsedData = JSON.parse(cachedData);
         return sendSuccess("Restaurants fetched successfully From Cache." , parsedData , 200);
     };
 
-    // 4. cache miss -> Call Service
     const restaurants = await getRestaurantsService(validatedData.data);
 
-    // 6. Cache result (TTL: 5 min)
     await redis.set(cacheKey , JSON.stringify(restaurants) , 'EX' , 300);
 
-    // 7. Return { restaurants, pagination: { page, limit, total, hasMore } }
     return sendSuccess("Restaurants fetched successfully" , { restaurants } , 200);
 });
 
@@ -54,23 +48,18 @@ export const getRestaurantsController = catchAsync(async (req: Request, res: Res
     * GET /api/v1/cuisines
 */
 export const getCuisinesController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    // 1. Build cache key: `cuisines:list${req.ip}`
     const cacheKey = `topPicks:list:${req.ip}`;
 
-    // 3. If cache hit → return cached response
     const cachedData = await redis.get(cacheKey);
     if(cachedData){
         const parsedData = JSON.parse(cachedData);
         return sendSuccess("Cuisines fetched successfully From Cache." , parsedData , 200);
     };
 
-    // 4. cache miss -> Call Service
     const cuisines = await getCuisinesService();
 
-    // 5. Cache result (TTL: 5 min)
     await redis.set(cacheKey , JSON.stringify(cuisines) , 'EX' , 300);
 
-    // 6. Return topPicks
     return sendSuccess("Cuisines fetched successfully" , { cuisines } , 200);
 });
 
@@ -82,31 +71,25 @@ export const getCuisinesController = catchAsync(async (req: Request, res: Respon
         *   - lat, lng (required): User's current location
 */
 export const getTopPicksController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {    
-    // 1. Validate lat/lng presence
     const validatedData = TopPicksSchema.safeParse(req.query); 
     if(!validatedData.success){
         return next(new ValidationError(validatedData.error.issues));
     };
 
-    // 2. Build cache key: `topPicks:list:${md5(queryParams)}`
     const queryString = JSON.stringify(validatedData.data);
     const hash = crypto.createHash('md5').update(queryString).digest('hex');
     const cacheKey = `topPicks:list:${hash}`;
 
-    // 3. If cache hit → return cached response
     const cachedData = await redis.get(cacheKey);
     if(cachedData){
         const parsedData = JSON.parse(cachedData);
         return sendSuccess("Top Picks fetched successfully From Cache." , parsedData , 200);
     };
 
-    // 4. cache miss -> Call Service
     const topPicks = await getTopPicksService(validatedData.data);
 
-    // 5. Cache result (TTL: 5 min)
     await redis.set(cacheKey , JSON.stringify(topPicks) , 'EX' , 300);
 
-    // 6. Return topPicks
     return sendSuccess("Top Picks fetched successfully" , { topPicks } , 200);
 });
 
@@ -118,7 +101,6 @@ export const getTopPicksController = catchAsync(async (req: Request, res: Respon
     * Query: lat, lng (optional - for distance calculation)
 */
 export const getRestaurantByIdController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    // 1. Validate restaurantId
     const validatedData = RestaurantDetailSchema.safeParse(req.query);
     if(!validatedData.success){
         return next(new ValidationError(validatedData.error.issues));
@@ -131,34 +113,30 @@ export const getRestaurantByIdController = catchAsync(async (req: Request, res: 
         return next(new ValidationError([] , "Restaurant ID Doesnt Exist."));
     };
 
-    // 2. Cache key: `restaurant:details:${restaurantId}`
     const cacheKey = `restaurant:details:${restaurantId}`;
 
-    // 3. If cache hit → return (still calculate isOpen dynamically)
     const cachedData = await redis.get(cacheKey);
+
     let restaurant;
     if(cachedData){
         restaurant = JSON.parse(cachedData);
     }
-    // 4. If cache miss -> Fetch restaurant with cuisines relation
     else{
         restaurant = await getRestaurantByIdService(Number(restaurantId));
+
         if (!restaurant){
             return next(new NotFoundError("Restaurant not found"));
         };
 
-        // 5. Cache result (TTL: 10 min)
         await redis.set(cacheKey , JSON.stringify(restaurant) , 'EX' , 600);
     };
 
-    // 5. Calculate isOpen from openingTime/closingTime
     const now = new Date();
     const restaurantOpeningTime = restaurant.openingTime;
     const restaurantClosingTime = restaurant.closingTime;
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const isOpen = (currentTime >= restaurantOpeningTime) && (currentTime <= restaurantClosingTime);
 
-    // 6. Calculate distance if lat/lng provided
     let distance = null;
     if(lat && lng){ 
         distance = calculateHaversineJS(Number(lat), Number(lng), restaurant.latitude, restaurant.longitude);
@@ -170,7 +148,6 @@ export const getRestaurantByIdController = catchAsync(async (req: Request, res: 
         distance
     };
 
-    // 8. Return { restaurant: { ...details, isOpen, distance, cuisines } }
     return sendSuccess("Restaurant details fetched", finalResult, 200);
 });
 
@@ -181,7 +158,6 @@ export const getRestaurantByIdController = catchAsync(async (req: Request, res: 
     * Params: restaurantId
 */
 export const getRestaurantMenuController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    // Validate Query String
     const validatedData = MenuSchema.safeParse(req.query);
     if(!validatedData.success){
         return next(new ValidationError(validatedData.error.issues));
@@ -192,12 +168,10 @@ export const getRestaurantMenuController = catchAsync(async (req: Request, res: 
         return next(new ValidationError([], "Restaurant ID Doesnt Exist."));
     };
 
-    // 1. Cache key: `restaurant:menu:${queryString}`
     const queryString = JSON.stringify({ restaurantId, ...validatedData.data });
     const hash = crypto.createHash('md5').update(queryString).digest('hex');
     const cacheKey = `restaurants:menu:${hash}`;
 
-    // 2. If cache hit → return
     let menu;
     const cachedData = await redis.get(cacheKey);
     
@@ -205,38 +179,12 @@ export const getRestaurantMenuController = catchAsync(async (req: Request, res: 
         menu = JSON.parse(cachedData);
         return sendSuccess("Menu fetched from cache" , menu , 200);
     }
-    // 3. If cache miss:
-    // a. Fetch categories where restaurantId, ordered by sortOrder
-    // b. For each category, fetch menuItems where inStock=true
-    // c. Sort items: bestsellers first, then by rating
-    // 4. Structure: [{ id, name, items: [{ id, name, price, isVeg, isBestseller, ... }] }]
     else{
         const categories = await getRestaurantMenuService(Number(restaurantId) , validatedData.data);
         menu = categories;
     };
     
-    // 5. Cache result (TTL: 15 min)
     await redis.set(cacheKey , JSON.stringify(menu) , 'EX' , 900);
 
-    // 6. Return { menu: categories }
     return sendSuccess("Menu fetched successfully" , menu , 200);
-});
-
-/**
-    * API 4.6: Get Restaurant Reviews
-    * GET /api/v1/restaurants/:restaurantId/reviews
-    
-    * Params: restaurantId
-    * Query: page (default 1), limit (default 10)
-*/
-export const getRestaurantReviewsController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // 1. Cache key: `restaurant:reviews:${restaurantId}:${page}`
-    // 2. If cache hit → return
-    // 3. If cache miss:
-    // a. Fetch reviews with user (firstName, avatar) relation
-    // b. Order by createdAt DESC
-    // c. Paginate
-    // d. Aggregate: averageRating, totalReviews, ratingDistribution {1: x, 2: y, ...}
-    // 4. Cache result (TTL: 5 min)
-    // 5. Return { reviews, stats: { average, total, distribution }, pagination }
 });

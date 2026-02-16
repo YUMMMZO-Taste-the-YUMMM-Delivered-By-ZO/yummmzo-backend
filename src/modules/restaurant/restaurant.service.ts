@@ -6,12 +6,10 @@ export const getRestaurantsService = async (filters: any): Promise<any> => {
         const { lat, lng, search, cuisine, rating, priceRange, freeDelivery, sort, page, limit } = filters;
         const offset = (page - 1) * limit;
 
-        // 1. Base Filters
         const searchFilter = search ? Prisma.sql`AND r.name LIKE ${`%${search}%`}` : Prisma.empty;
         const ratingFilter = rating ? Prisma.sql`AND r.rating >= ${rating}` : Prisma.empty;
         const freeDeliveryFilter = Prisma.empty; 
 
-        // 2. Cuisine Join Logic (Many-to-Many) 
         let cuisineJoin = Prisma.empty;
         let cuisineFilter = Prisma.empty;
 
@@ -24,7 +22,6 @@ export const getRestaurantsService = async (filters: any): Promise<any> => {
             cuisineFilter = Prisma.sql`AND c.name IN (${Prisma.join(cuisineList)})`;
         };
 
-        // 3. Price Range Mapping
         let priceFilter = Prisma.empty;
         if (priceRange === "1"){
             priceFilter = Prisma.sql`AND r.priceForTwo <= 300`;
@@ -39,7 +36,6 @@ export const getRestaurantsService = async (filters: any): Promise<any> => {
             priceFilter = Prisma.sql`AND r.priceForTwo > 1500`;
         };
 
-        // 4. Sorting Logic
         let orderBy = Prisma.sql`ORDER BY distance ASC`;
         if (sort === "rating"){
             orderBy = Prisma.sql`ORDER BY r.rating DESC`;
@@ -48,7 +44,6 @@ export const getRestaurantsService = async (filters: any): Promise<any> => {
             orderBy = Prisma.sql`ORDER BY r.deliveryTime ASC`;
         };
 
-        // 5. Main Query with Haversine
         const restaurants = await prisma.$queryRaw`
             SELECT DISTINCT r.*, (
                 6371 * acos(
@@ -69,7 +64,6 @@ export const getRestaurantsService = async (filters: any): Promise<any> => {
             LIMIT ${limit} OFFSET ${offset}
         `;
 
-        // 6. Count Query
         const totalCountResult: any = await prisma.$queryRaw`
             SELECT COUNT(DISTINCT r.id) as count
             FROM Restaurant r
@@ -221,15 +215,5 @@ export const getRestaurantMenuService = async (restaurantId: number , filters: a
     catch (error) {
         console.log(`Error While Getting Restaurants Menu : ${error}`);
         throw new Error(`Error While Getting Restaurants Menu : ${error}`);
-    }
-};
-
-export const getRestaurantReviewsService = async (): Promise<void> => {
-        try {
-        
-    }
-    catch (error) {
-        console.log(`Error While Getting All Restaurants : ${error}`);
-        throw new Error(`Error While Getting All Restaurants : ${error}`);
     }
 };
