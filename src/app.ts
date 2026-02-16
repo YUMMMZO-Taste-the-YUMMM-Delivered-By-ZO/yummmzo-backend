@@ -7,11 +7,19 @@ import cookieParser from 'cookie-parser';
 const app = express();
 
 app.use(cors({
-    origin: "http://localhost:5173",
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser());
+
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'success',
+        message: 'YUMMMZO API is running',
+        timestamp: new Date().toISOString()
+    });
+});
 
 app.use('/api/v1' , routes);
 
