@@ -114,7 +114,7 @@ async function seedRestaurant(
     restaurantData: { name: string; latitude: number; longitude: number; location: string },
     cuisineRecords: { id: number; name: string }[]
 ) {
-    const timings = getRandomTimings();
+    // const timings = getRandomTimings();
     const randomCuisines = getRandomElements(cuisineRecords, getRandomNumber(2, 5));
 
     // Create restaurant
@@ -129,12 +129,12 @@ async function seedRestaurant(
             location: restaurantData.location,
             latitude: restaurantData.latitude,
             longitude: restaurantData.longitude,
-            openingTime: timings.opening,
-            closingTime: timings.closing,
+            openingTime: "00:00",
+            closingTime: "23:59",
             priceForTwo: getRandomPriceForTwo(),
             deliveryTime: getRandomDeliveryTime(),
             isActive: true,
-            status: Math.random() > 0.1 ? "OPEN" : "CLOSED",
+            status: 'OPEN',
             cuisines: {
                 connect: randomCuisines.map(c => ({ id: c.id }))
             }

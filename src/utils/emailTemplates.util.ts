@@ -1,115 +1,259 @@
 export const getEmailTemplate = (type: string, payload: any) => {
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const logoUrl = `${baseUrl}/logo.png`; 
 
     const colors = {
-        primary: '#7ED300',      
-        background: '#000A04',   
-        surface: 'rgba(18, 26, 19, 0.8)', 
+        primary: '#7ED300',
+        primaryDark: '#5fa000',
+        background: '#000A04',
+        surface: '#0d1a0e',
+        surfaceLight: '#152316',
         text: '#FFFFFF',
-        muted: '#A0A0A0',
+        muted: '#8a9a8b',
+        border: 'rgba(126, 211, 0, 0.2)',
         error: '#FF4B4B'
     };
 
-    // Immersive background with a radial glow to simulate the "blur/glass" feel
     const baseStyles = `
         font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         background-color: ${colors.background};
-        background-image: radial-gradient(circle at top right, #0a2a0a 0%, ${colors.background} 60%);
-        color: ${colors.text};
         margin: 0;
-        padding: 60px 20px;
+        padding: 40px 16px;
     `;
 
-    // Rounded like your footer (32px+) and using a subtle border-glow
     const containerStyles = `
-        max-width: 560px;
+        max-width: 580px;
         margin: 0 auto;
-        background-color: #111912;
-        border-radius: 48px;
-        padding: 50px 40px;
-        border: 1px solid rgba(126, 211, 0, 0.15);
+        background-color: ${colors.surface};
+        border-radius: 32px;
+        overflow: hidden;
+        border: 1px solid ${colors.border};
+        box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+    `;
+
+    const headerStyles = `
+        background: linear-gradient(135deg, #0d1a0e 0%, #0a2a0a 50%, #0d1a0e 100%);
+        padding: 40px 40px 36px;
         text-align: center;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        border-bottom: 1px solid ${colors.border};
+        position: relative;
     `;
 
-    const logoStyle = `
-        width: 160px;
-        height: auto;
-        margin-bottom: 30px;
+    const brandStyles = `
+        font-size: 36px;
+        font-weight: 900;
+        letter-spacing: -1px;
+        color: ${colors.text};
+        font-style: italic;
+        text-transform: uppercase;
+        margin: 0;
+        line-height: 1;
     `;
 
-    // High-impact button with the primary glow
+    const taglineStyles = `
+        font-size: 11px;
+        color: ${colors.primary};
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        font-weight: 600;
+        margin-top: 8px;
+    `;
+
+    const bodyStyles = `
+        padding: 44px 40px;
+        text-align: center;
+    `;
+
+    const h2Styles = `
+        font-size: 28px;
+        font-weight: 900;
+        color: ${colors.text};
+        margin: 0 0 16px;
+        line-height: 1.2;
+        letter-spacing: -0.5px;
+    `;
+
+    const pStyles = `
+        font-size: 15px;
+        color: ${colors.muted};
+        line-height: 1.7;
+        margin: 0 0 24px;
+    `;
+
     const buttonStyles = `
         background-color: ${colors.primary};
         color: #000000;
-        padding: 18px 40px;
+        padding: 16px 44px;
         text-decoration: none;
-        border-radius: 16px;
+        border-radius: 14px;
         font-weight: 800;
-        font-size: 16px;
+        font-size: 14px;
         display: inline-block;
-        margin: 30px 0;
-        box-shadow: 0 8px 25px rgba(126, 211, 0, 0.3);
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 1.5px;
+        box-shadow: 0 8px 24px rgba(126, 211, 0, 0.35);
     `;
 
-    const wrapTemplate = (content: string) => `
-        <div style="${baseStyles}">
+    const dividerStyles = `
+        height: 1px;
+        background: ${colors.border};
+        margin: 32px 0;
+        border: none;
+    `;
+
+    const footerStyles = `
+        padding: 24px 40px;
+        text-align: center;
+        background-color: #0a120b;
+        border-top: 1px solid ${colors.border};
+    `;
+
+    const footerTextStyles = `
+        font-size: 11px;
+        color: ${colors.muted};
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin: 0;
+        line-height: 1.8;
+    `;
+
+    const pillStyles = `
+        display: inline-block;
+        background: rgba(126, 211, 0, 0.1);
+        border: 1px solid ${colors.border};
+        color: ${colors.primary};
+        padding: 6px 18px;
+        border-radius: 100px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-bottom: 20px;
+    `;
+
+    const cardStyles = `
+        background: ${colors.surfaceLight};
+        border: 1px solid ${colors.border};
+        border-radius: 20px;
+        padding: 24px;
+        margin: 24px 0;
+        text-align: left;
+    `;
+
+    const wrapTemplate = (content: string, headerExtra?: string) => `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="${baseStyles}">
             <div style="${containerStyles}">
-                <img src="${logoUrl}" alt="YUMMMZO" style="${logoStyle}" />
-                ${content}
-                <div style="margin-top: 50px; padding-top: 30px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 11px; color: ${colors.muted}; letter-spacing: 2px;">
-                    © 2026 YUMMMZO. BUILT BY ZO.
+
+                <!-- HEADER / BRAND -->
+                <div style="${headerStyles}">
+                    <p style="${brandStyles}">
+                        YUMMM<span style="color: ${colors.primary};">ZO</span>
+                    </p>
+                    <p style="${taglineStyles}">Taste the Yummm · Delivered by Zo</p>
+                    ${headerExtra || ''}
                 </div>
+
+                <!-- BODY -->
+                <div style="${bodyStyles}">
+                    ${content}
+                </div>
+
+                <!-- FOOTER -->
+                <div style="${footerStyles}">
+                    <p style="${footerTextStyles}">
+                        © 2026 YUMMMZO · Built with ❤️ by Zo<br/>
+                        <span style="color: rgba(138, 154, 139, 0.5);">yummmzo.team@gmail.com</span>
+                    </p>
+                </div>
+
             </div>
-        </div>
+        </body>
+        </html>
     `;
 
     switch (type) {
+
         case 'VERIFICATION_EMAIL':
             return {
-                subject: `One step closer to the YUMMM... 🚀`,
+                subject: `Verify your account, ${payload.name} 🚀`,
                 html: wrapTemplate(`
-                    <h2 style="font-size: 32px; line-height: 1.2; margin-bottom: 20px; font-weight: 900;">Confirm your <span style="color: ${colors.primary};">appetite!</span></h2>
-                    <p style="font-size: 16px; color: #e0e0e0;">Hi ${payload.name}, we're ready to serve, but we need to make sure it's really you. Click below to verify and unlock the flavors.</p>
-                    <a href="${payload.url}" style="${buttonStyles}">Verify Account</a>
-                    <p style="font-size: 13px; color: ${colors.muted}; margin-top: 10px;">Link expires in 24 hours. Don't let it get cold.</p>
+                    <span style="${pillStyles}">Action Required</span>
+                    <h2 style="${h2Styles}">
+                        Confirm your <span style="color: ${colors.primary};">appetite!</span>
+                    </h2>
+                    <p style="${pStyles}">
+                        Hey ${payload.name}, we're almost there! Click below to verify your email and unlock access to the tastiest food delivery platform.
+                    </p>
+                    <a href="${payload.url}" style="${buttonStyles}">Verify My Account</a>
+                    <hr style="${dividerStyles}" />
+                    <p style="font-size: 12px; color: ${colors.muted}; margin: 0;">
+                        ⏳ Link expires in <strong style="color: ${colors.text};">24 hours</strong>. Don't let it go cold.
+                    </p>
                 `),
             };
 
         case 'WELCOME_EMAIL':
             return {
-                subject: `Welcome to the Family, ${payload.name}! 🍔`,
+                subject: `Welcome to YUMMMZO, ${payload.name}! 🍔`,
                 html: wrapTemplate(`
-                    <h2 style="font-size: 32px; line-height: 1.2; margin-bottom: 20px; font-weight: 900;">Welcome to the <span style="color: ${colors.primary};">Family</span></h2>
-                    <p style="font-size: 18px; font-weight: 600;">You’re officially a Yummmzo insider.</p>
-                    <p style="font-size: 16px; color: #e0e0e0;">The kitchen is open and the chefs are ready. Your next favorite meal is just a tap away. Shall we find it?</p>
-                    <a href="${baseUrl}/explore" style="${buttonStyles}">Feed Me Now</a>
-                    <p style="margin-top: 20px; font-style: italic; color: ${colors.primary};">Stay hungry.</p>
+                    <div style="font-size: 56px; margin-bottom: 16px; line-height: 1;">🎉</div>
+                    <span style="${pillStyles}">You're In!</span>
+                    <h2 style="${h2Styles}">
+                        Welcome to the <span style="color: ${colors.primary};">Family!</span>
+                    </h2>
+                    <p style="${pStyles}">
+                        You're officially a Yummmzo insider, ${payload.name}. The kitchen is open, the chefs are ready, and your next favorite meal is just a tap away.
+                    </p>
+                    <a href="${baseUrl}/home" style="${buttonStyles}">Start Exploring</a>
+                    <hr style="${dividerStyles}" />
+                    <p style="font-size: 13px; font-style: italic; color: ${colors.primary}; margin: 0;">
+                        "Stay Hungry. Stay Yummmzo."
+                    </p>
                 `),
             };
 
         case 'PASSWORD_RESET':
             return {
-                subject: `Lost your key to the kitchen? 🔑`,
+                subject: `Reset your password — YUMMMZO 🔑`,
                 html: wrapTemplate(`
-                    <h2 style="font-size: 32px; margin-bottom: 20px; font-weight: 900;">Identity <span style="color: ${colors.primary};">Check!</span></h2>
-                    <p style="font-size: 16px; color: #e0e0e0;">Hey ${payload.name}, forgot your password? No worries, it happens. Tap below to set a fresh one.</p>
+                    <div style="font-size: 56px; margin-bottom: 16px; line-height: 1;">🔑</div>
+                    <span style="${pillStyles}">Password Reset</span>
+                    <h2 style="${h2Styles}">
+                        Lost your <span style="color: ${colors.primary};">key?</span>
+                    </h2>
+                    <p style="${pStyles}">
+                        Hey ${payload.name}, no worries — it happens to the best of us. Click below to set a fresh password and get back to ordering.
+                    </p>
                     <a href="${payload.resetLink}" style="${buttonStyles}">Reset Password</a>
-                    <p style="font-size: 12px; color: ${colors.muted};">This link self-destructs in 10 minutes. Hurry!</p>
+                    <hr style="${dividerStyles}" />
+                    <p style="font-size: 12px; color: ${colors.muted}; margin: 0;">
+                        ⚡ This link expires in <strong style="color: ${colors.text};">10 minutes.</strong> If you didn't request this, ignore this email.
+                    </p>
                 `),
             };
 
         case 'PASSWORD_UPDATED':
             return {
-                subject: `Your security just got a glow-up ✨`,
+                subject: `Password updated successfully ✅`,
                 html: wrapTemplate(`
-                    <div style="font-size: 50px; margin-bottom: 20px;">🛡️</div>
-                    <h2 style="font-size: 32px; margin-bottom: 20px; font-weight: 900;">Security <span style="color: ${colors.primary};">Leveled Up!</span></h2>
-                    <p style="font-size: 16px; color: #e0e0e0;">Hi ${payload.name}, your password was successfully changed. Your account is now tighter than a well-wrapped burrito.</p>
-                    <a href="${baseUrl}/login" style="${buttonStyles}">Back to App</a>
+                    <div style="font-size: 56px; margin-bottom: 16px; line-height: 1;">🛡️</div>
+                    <span style="${pillStyles}">Security Update</span>
+                    <h2 style="${h2Styles}">
+                        You're all <span style="color: ${colors.primary};">secured!</span>
+                    </h2>
+                    <p style="${pStyles}">
+                        Hi ${payload.name}, your password has been successfully updated. Your account is locked and loaded.
+                    </p>
+                    <a href="${baseUrl}/home" style="${buttonStyles}">Back to App</a>
+                    <hr style="${dividerStyles}" />
+                    <p style="font-size: 12px; color: ${colors.muted}; margin: 0;">
+                        If you didn't make this change, contact us immediately at yummmzo.team@gmail.com
+                    </p>
                 `),
             };
 
@@ -117,19 +261,85 @@ export const getEmailTemplate = (type: string, payload: any) => {
             return {
                 subject: `Security Alert: Was this you? 🛡️`,
                 html: wrapTemplate(`
-                    <h2 style="font-size: 32px; color: ${colors.error}; font-weight: 900;">Was this you?</h2>
-                    <p style="font-size: 16px; color: #e0e0e0;">Hi ${payload.name}, we noticed your password was recently changed. If this was you, you're all set!</p>
-                    <div style="background: rgba(255, 75, 75, 0.1); padding: 25px; border-radius: 24px; margin: 30px 0; border: 1px solid rgba(255, 75, 75, 0.2);">
-                        <p style="margin: 0; color: #fff; font-size: 14px;">If you <strong>did not</strong> change your password, someone might be trying to swipe your order. Secure it now.</p>
+                    <div style="font-size: 56px; margin-bottom: 16px; line-height: 1;">⚠️</div>
+                    <span style="display: inline-block; background: rgba(255,75,75,0.1); border: 1px solid rgba(255,75,75,0.3); color: ${colors.error}; padding: 6px 18px; border-radius: 100px; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px;">Security Alert</span>
+                    <h2 style="${h2Styles}">
+                        Was this <span style="color: ${colors.error};">you?</span>
+                    </h2>
+                    <p style="${pStyles}">
+                        Hi ${payload.name}, we noticed your password was recently changed. If this was you — great, you're all set!
+                    </p>
+                    <div style="background: rgba(255,75,75,0.08); border: 1px solid rgba(255,75,75,0.2); border-radius: 16px; padding: 20px 24px; margin: 0 0 28px; text-align: left;">
+                        <p style="margin: 0; color: #fff; font-size: 14px; line-height: 1.6;">
+                            🚨 If you <strong>did not</strong> make this change, your account may be at risk. Secure it immediately.
+                        </p>
                     </div>
-                    <a href="${baseUrl}/password-reset" style="background-color: ${colors.error}; border-radius: 16px; ${buttonStyles.split('background-color: ' + colors.primary + ';')[1]}">Secure Account</a>
+                    <a href="${baseUrl}/reset-password" style="background-color: ${colors.error}; color: #fff; padding: 16px 44px; text-decoration: none; border-radius: 14px; font-weight: 800; font-size: 14px; display: inline-block; text-transform: uppercase; letter-spacing: 1.5px;">Secure My Account</a>
+                `),
+            };
+
+        case 'ORDER_CONFIRMATION':
+            return {
+                subject: `Order confirmed! Your food is on its way 🍔`,
+                html: wrapTemplate(`
+                    <div style="font-size: 56px; margin-bottom: 16px; line-height: 1;">✅</div>
+                    <span style="${pillStyles}">Order Confirmed</span>
+                    <h2 style="${h2Styles}">
+                        Your order is <span style="color: ${colors.primary};">placed!</span>
+                    </h2>
+                    <p style="${pStyles}">
+                        We've received your order and the restaurant is already getting to work. Sit tight — good food is coming your way!
+                    </p>
+
+                    <div style="${cardStyles}">
+                        <p style="margin: 0 0 12px; font-size: 12px; color: ${colors.muted}; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;">Order Summary</p>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="font-size: 14px; color: ${colors.muted};">Order ID</span>
+                            <span style="font-size: 14px; color: ${colors.text}; font-weight: 700;">${payload.orderNumber}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="font-size: 14px; color: ${colors.muted};">Total Amount</span>
+                            <span style="font-size: 16px; color: ${colors.primary}; font-weight: 800;">₹${payload.totalAmount}</span>
+                        </div>
+                    </div>
+
+                    <a href="${baseUrl}/track/${payload.orderId}" style="${buttonStyles}">Track My Order</a>
+                    <hr style="${dividerStyles}" />
+                    <p style="font-size: 12px; color: ${colors.muted}; margin: 0;">
+                        Questions? Reply to this email or contact us at yummmzo.team@gmail.com
+                    </p>
+                `),
+            };
+
+        case 'ORDER_CANCELLATION':
+            return {
+                subject: `Order cancelled — ${payload.orderNumber}`,
+                html: wrapTemplate(`
+                    <div style="font-size: 56px; margin-bottom: 16px; line-height: 1;">❌</div>
+                    <span style="display: inline-block; background: rgba(255,75,75,0.1); border: 1px solid rgba(255,75,75,0.3); color: ${colors.error}; padding: 6px 18px; border-radius: 100px; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px;">Order Cancelled</span>
+                    <h2 style="${h2Styles}">
+                        Your order has been <span style="color: ${colors.error};">cancelled</span>
+                    </h2>
+                    <p style="${pStyles}">
+                        Your order <strong style="color: ${colors.text};">${payload.orderNumber}</strong> has been successfully cancelled. If you paid online, a refund will be processed within 5-7 business days.
+                    </p>
+
+                    <a href="${baseUrl}/home" style="${buttonStyles}">Order Again</a>
+                    <hr style="${dividerStyles}" />
+                    <p style="font-size: 12px; color: ${colors.muted}; margin: 0;">
+                        We're sorry to see this order go. We hope to serve you again soon! 🙏
+                    </p>
                 `),
             };
 
         default:
-            return { 
-                subject: 'Yummmzo Notification', 
-                html: wrapTemplate(`<h2 style="font-weight: 900;">Update from Yummmzo</h2><p>Check your app for the latest flavors!</p>`) 
+            return {
+                subject: 'Update from YUMMMZO',
+                html: wrapTemplate(`
+                    <h2 style="${h2Styles}">Hey there! 👋</h2>
+                    <p style="${pStyles}">You have a new update from YUMMMZO. Check the app for the latest.</p>
+                    <a href="${baseUrl}/home" style="${buttonStyles}">Open App</a>
+                `)
             };
     }
 };

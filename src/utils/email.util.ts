@@ -6,7 +6,7 @@ export async function sendEmail(to: string, type: string, payload: any) {
         const { subject, html } = getEmailTemplate(type, payload);
 
         const info = await transporter.sendMail({
-            from: `"Yummmzo Team" <${process.env.SMTP_USER}>`,
+            from: `"Yummmzo Team 🍔" <${process.env.SMTP_USER}>`,
             to,
             subject,
             html,

@@ -38,12 +38,17 @@ export const emailWorker = new Worker('email-queue', async (job: Job) => {
 
         case 'ORDER_CONFIRMATION':
             await sendEmail(email, 'ORDER_CONFIRMATION', {
-                name,
-                orderId: data?.orderId || 'N/A',
-                amount: data?.amount || 0
+                orderNumber: job.data.orderNumber,
+                totalAmount: job.data.totalAmount,
+                orderId: job.data.orderId
             });
             break;
 
+        case 'ORDER_CANCELLATION':
+            await sendEmail(email, 'ORDER_CANCELLATION', {
+                orderNumber: job.data.orderNumber
+            });
+            break;
 
         default:
             console.warn(`⚠️ Unknown job name: ${job.name}`);

@@ -58,10 +58,10 @@ export const createOrderController = catchAsync(async (req: Request, res: Respon
         return next(new NotFoundError("Restaurant doesn't exist."));
     };
 
-    const isAddressDeliverable = await checkifAddressDeliverableService(Number(userId), Number(addressId), restaurantData);
-    if(!isAddressDeliverable){
-        return next(new BadRequestError("Sorry, we don't deliver to this location yet."));
-    };
+    // const isAddressDeliverable = await checkifAddressDeliverableService(Number(userId), Number(addressId), restaurantData);
+    // if(!isAddressDeliverable){
+    //     return next(new BadRequestError("Sorry, we don't deliver to this location yet."));
+    // };
 
     const order = await createOrderService(Number(userId), Number(addressId), deliveryInstruction, paymentMethod, userCart);
 
@@ -104,7 +104,8 @@ export const createOrderController = catchAsync(async (req: Request, res: Respon
     await emailQueue.add('ORDER_CONFIRMATION', {
         email: authUser.email,
         orderNumber: order.orderNumber,
-        totalAmount: order.total
+        totalAmount: order.total,
+        orderId: order.id        
     });
 
     const orderDetails = { ...order, ...paymentMetaData };
