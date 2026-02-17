@@ -2,8 +2,15 @@ import { redisConnection } from "@/config/redis";
 import { sendEmail } from "@/utils/email.util";
 import { Job, Worker } from "bullmq";
 import dotenv from 'dotenv';
+import path from 'path';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
+console.log('📧 Email Worker ENV Check:', {
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    FRONTEND_URL: process.env.FRONTEND_URL
+});
 
 export const emailWorker = new Worker('email-queue', async (job: Job) => {
     const { email, name, data } = job.data;
