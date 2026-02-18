@@ -1,5 +1,6 @@
 node_modules/
 .env
+learnings.md
 /src/generated/prisma
 node_modules 2/
 package-lock 2.json
