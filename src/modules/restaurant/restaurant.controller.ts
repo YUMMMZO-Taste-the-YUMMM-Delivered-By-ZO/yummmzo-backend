@@ -1,11 +1,12 @@
+import axios from 'axios';
 import { catchAsync } from "@/utils/catchAsync.util";
 import { Request, Response, NextFunction } from "express";
-import { MenuSchema, RestaurantDetailSchema, RestaurantFilterSchema, TopPicksSchema } from "./restaurant.dataValidation";
+import { MenuSchema, RestaurantDetailSchema, RestaurantFilterSchema, SmartOrderSchema, TopPicksSchema } from "./restaurant.dataValidation";
 import { NotFoundError, ValidationError } from "@/utils/customError.util";
 import { redisConnection as redis } from "@/config/redis";
 import { sendSuccess } from "@/utils/response.util";
 import crypto from 'crypto';
-import { getCuisinesService, getRestaurantByIdService, getRestaurantMenuService, getRestaurantsService, getTopPicksService } from "./restaurant.service";
+import { getCuisinesService, getMenuContextService, getRestaurantByIdService, getRestaurantMenuService, getRestaurantsService, getTopPicksService, syncSmartCartToRedisService } from "./restaurant.service";
 import { calculateHaversineJS } from "@/utils/distance.util";
 
 /**
@@ -185,4 +186,101 @@ export const getRestaurantMenuController = catchAsync(async (req: Request, res: 
     
     await redis.set(cacheKey , JSON.stringify(menu) , 'EX' , 900);
     return sendSuccess("Menu fetched successfully" , menu , 200);
+});
+
+/**
+    * API 4.6: Build Smart Cart
+    * GET /api/v1/restaurants/:restaurantId/smart-cart
+    
+    * Params: restaurantId
+*/
+export const buildSmartCartController = catchAsync(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    const validatedData = SmartOrderSchema.safeParse(req.body);
+    if (!validatedData.success){
+        return next(new ValidationError(validatedData.error.issues));
+    };
+
+    const { restaurantId } = req.params;
+    const { craving } = validatedData.data;
+    const userId = (req as any).user.id;
+
+    const menuContext = await getMenuContextService(Number(restaurantId));
+
+    const query = `
+        query ExecuteWorkflow($workflowId: String!, $user_craving: String, $menu_context: String) {
+            executeWorkflow(
+                workflowId: $workflowId
+                payload: { user_craving: $user_craving, menu_context: $menu_context }
+            ) {
+                status
+                result
+            }
+        }`;
+
+    const variables = {
+        workflowId: process.env.LAMATIC_WORKFLOW_ID, 
+        user_craving: craving,
+        menu_context: JSON.stringify(menuContext)
+    };
+
+    try {
+        const response = await axios.post(process.env.LAMATIC_GRAPHQL_URL!, 
+            { query, variables },
+            {
+                headers: {
+                    'Authorization': `Bearer ${process.env.LAMATIC_API_KEY}`, 
+                    'Content-Type': 'application/json',
+                    'x-project-id': process.env.LAMATIC_PROJECT_ID 
+                }
+            }
+        );
+
+        if (response.data.errors) {
+            console.error("Lamatic Error:", response.data.errors);
+            throw new Error(response.data.errors[0].message);
+        }
+
+        const workflowData = response.data.data?.executeWorkflow;
+        const aiRawResult = workflowData?.result;
+
+        if (!aiRawResult){
+            throw new Error("AI return empty result.");
+        };
+
+        const parsedResult = typeof aiRawResult === 'string' ? JSON.parse(aiRawResult) : aiRawResult;
+
+        let itemsToSync = [];
+        if (Array.isArray(parsedResult)) {
+            itemsToSync = parsedResult;
+        } 
+        else if (parsedResult.response?.cart) {
+            itemsToSync = parsedResult.response.cart;
+        } 
+        else if (parsedResult.cart) {
+            itemsToSync = parsedResult.cart;
+        } 
+        else if (parsedResult.response && Array.isArray(parsedResult.response)) {
+            itemsToSync = parsedResult.response;
+        };
+
+        if (!Array.isArray(itemsToSync)) {
+            console.error("Data structure mismatch:", parsedResult);
+            itemsToSync = [];
+        }
+
+        const syncedCart = await syncSmartCartToRedisService(
+            Number(userId), 
+            Number(restaurantId), 
+            itemsToSync
+        );
+
+        return sendSuccess("Magic happened! ✨", syncedCart, 201);
+    } 
+    catch (error: any) {
+        console.error("SMART CART FATAL:", error.message);
+        return res.status(500).json({ 
+            message: "AI Concierge is busy.",
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined 
+        });
+    }
 });

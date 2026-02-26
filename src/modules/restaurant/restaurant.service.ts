@@ -1,4 +1,5 @@
 import { prisma } from "@/config/database";
+import { redisConnection as redis } from "@/config/redis";
 import { Prisma } from "@prisma/client";
 
 export const getRestaurantsService = async (filters: any): Promise<any> => {
@@ -216,4 +217,89 @@ export const getRestaurantMenuService = async (restaurantId: number , filters: a
         console.log(`Error While Getting Restaurants Menu : ${error}`);
         throw new Error(`Error While Getting Restaurants Menu : ${error}`);
     }
+};
+
+export const getMenuContextService = async (restaurantId: number): Promise<any> => {
+    try {
+        const menuData = await prisma.category.findMany({
+            where: { 
+                restaurantId: restaurantId
+            },
+            select: {
+                name: true,
+                items: {
+                    where: { 
+                        inStock: true 
+                    },
+                    select: {
+                        id: true,
+                        name: true,
+                        price: true,
+                        description: true,
+                        isVeg: true,
+                        spiceLevel: true
+                    }
+                }
+            }
+        });
+
+        return menuData;
+    } catch (error) {
+        console.error(`Error While Getting Menu Context : ${error}`);
+        throw new Error(`Failed to fetch menu context for AI`);
+    }
+};
+
+export const syncSmartCartToRedisService = async (userId: number, restaurantId: number, aiItems: any[]): Promise<any> => {
+    try {
+        const safeItems = Array.isArray(aiItems) ? aiItems : [];
+        
+        if (safeItems.length === 0) {
+            throw new Error("No items found in AI response to sync.");
+        }
+
+        const menuIDs = safeItems.map((item: any) => item.menuItemId);
+
+        const dbItems = await prisma.menu_Item.findMany({
+            where: { 
+                id: { in: menuIDs }, 
+                category: { restaurantId: restaurantId } 
+            }
+        });
+
+        const cartItems = safeItems.map((aiItem: any) => {
+            const dbItem = dbItems.find(i => i.id === aiItem.menuItemId);
+            if (!dbItem) return null;
+
+            return {
+                menuItemId: dbItem.id,
+                name: dbItem.name,
+                price: dbItem.price,
+                quantity: aiItem.quantity || 1
+            };
+        }).filter(Boolean);
+
+        if (cartItems.length === 0){
+            throw new Error("No items matched the restaurant menu.");
+        };
+
+        const itemTotal = cartItems.reduce((acc, item: any) => acc + (item.price * item.quantity), 0);
+        const gst = itemTotal * 0.05;
+        const deliveryFee = 40;
+        const packagingFee = 10;
+        const total = itemTotal + gst + deliveryFee + packagingFee;
+
+        const newCart = {
+            restaurantId,
+            items: cartItems,
+            bill: { itemTotal, gst, deliveryFee, packagingFee, total },
+            updatedAt: new Date().toISOString()
+        };
+
+        await redis.set(`cart:${userId}`, JSON.stringify(newCart), 'EX', 600);
+        return newCart;
+    } 
+    catch (error) {
+        throw new Error(`Smart Cart Sync Failed: ${error}`);
+    };
 };

@@ -44,3 +44,10 @@ export const MenuSchema = z.object({
 });
 
 export type MenuSchemaData = z.infer<typeof MenuSchema>;
+
+// Smart Order Schema
+export const SmartOrderSchema = z.object({
+    craving: z.string().min(5, "Craving is too short to process")
+});
+
+export type SmartOrderSchemaData = z.infer<typeof SmartOrderSchema>;
